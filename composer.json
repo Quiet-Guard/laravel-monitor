@@ -1,0 +1,38 @@
+{
+    "name": "laboiteacode/laravel-monitor",
+    "description": "Client SDK to report exceptions from a Laravel application to a LaravelMonitor server.",
+    "type": "library",
+    "license": "MIT",
+    "keywords": ["laravel", "monitoring", "exceptions", "error-tracking"],
+    "require": {
+        "php": "^8.2",
+        "illuminate/contracts": "^11.0|^12.0|^13.0",
+        "illuminate/support": "^11.0|^12.0|^13.0",
+        "illuminate/http": "^11.0|^12.0|^13.0"
+    },
+    "require-dev": {
+        "orchestra/testbench": "^9.0|^10.0|^11.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "LaBoiteACode\\LaravelMonitor\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "LaBoiteACode\\LaravelMonitor\\Tests\\": "tests/"
+        }
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "LaBoiteACode\\LaravelMonitor\\LaravelMonitorServiceProvider"
+            ],
+            "aliases": {
+                "Monitor": "LaBoiteACode\\LaravelMonitor\\Facades\\Monitor"
+            }
+        }
+    },
+    "minimum-stability": "stable",
+    "prefer-stable": true
+}

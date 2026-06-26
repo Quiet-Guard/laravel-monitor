@@ -8,7 +8,9 @@ use Illuminate\Log\Events\MessageLogged;
 use Illuminate\Queue\Events\JobFailed;
 use Illuminate\Queue\Events\JobProcessed;
 use Illuminate\Support\ServiceProvider;
+use LaBoiteACode\LaravelMonitor\Console\BackupCommand;
 use LaBoiteACode\LaravelMonitor\Console\ReportDependenciesCommand;
+use LaBoiteACode\LaravelMonitor\Console\RestoreCommand;
 use LaBoiteACode\LaravelMonitor\Http\Transport;
 use LaBoiteACode\LaravelMonitor\Support\LogCollector;
 use LaBoiteACode\LaravelMonitor\Support\PayloadBuilder;
@@ -80,6 +82,8 @@ class LaravelMonitorServiceProvider extends ServiceProvider
 
             $this->commands([
                 ReportDependenciesCommand::class,
+                BackupCommand::class,
+                RestoreCommand::class,
             ]);
         }
 

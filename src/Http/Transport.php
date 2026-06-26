@@ -46,6 +46,20 @@ class Transport
     }
 
     /**
+     * Send the project's dependency snapshot to the monitor server.
+     *
+     * @param  array<int, array<string, mixed>>  $packages
+     */
+    public function sendDependencies(array $packages): bool
+    {
+        if ($packages === []) {
+            return false;
+        }
+
+        return $this->post('/api/v1/dependencies', ['packages' => $packages], 'dependencies');
+    }
+
+    /**
      * Never throws: monitoring must not break the host application.
      *
      * @param  array<string, mixed>  $payload

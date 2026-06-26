@@ -8,6 +8,7 @@ use Illuminate\Log\Events\MessageLogged;
 use Illuminate\Queue\Events\JobFailed;
 use Illuminate\Queue\Events\JobProcessed;
 use Illuminate\Support\ServiceProvider;
+use LaBoiteACode\LaravelMonitor\Console\ReportDependenciesCommand;
 use LaBoiteACode\LaravelMonitor\Http\Transport;
 use LaBoiteACode\LaravelMonitor\Support\LogCollector;
 use LaBoiteACode\LaravelMonitor\Support\PayloadBuilder;
@@ -76,6 +77,10 @@ class LaravelMonitorServiceProvider extends ServiceProvider
             $this->publishes([
                 __DIR__.'/../config/monitor.php' => $this->app->configPath('monitor.php'),
             ], 'monitor-config');
+
+            $this->commands([
+                ReportDependenciesCommand::class,
+            ]);
         }
 
         $this->registerExceptionHook();

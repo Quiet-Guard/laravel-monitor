@@ -75,6 +75,18 @@ request (or command) terminates, so log forwarding adds at most one HTTP call.
 Log entries that carry an exception are skipped — they are already covered by the
 exception pipeline. Context values are scrubbed with the same rules as exceptions.
 
+## Dependency vulnerability scanning
+
+Report the app's installed packages (from `composer.lock`) so the server can scan
+them for known vulnerabilities. Run this as part of your deploy:
+
+```bash
+php artisan monitor:dependencies
+```
+
+Pass `--path` to point at a specific `composer.lock`. Nothing is sent when
+`MONITOR_ENABLED=false`.
+
 ## Manual reporting
 
 ```php

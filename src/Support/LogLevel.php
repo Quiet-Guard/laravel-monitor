@@ -25,8 +25,9 @@ class LogLevel
      */
     public static function meetsThreshold(string $level, string $threshold): bool
     {
-        $current = self::SEVERITY[strtolower($level)] ?? 1;
-        $minimum = self::SEVERITY[strtolower($threshold)] ?? 0;
+        $current = self::SEVERITY[strtolower($level)] ?? self::SEVERITY['info'];
+        // A mistyped threshold should fail safe (capture less), not capture everything.
+        $minimum = self::SEVERITY[strtolower($threshold)] ?? self::SEVERITY['warning'];
 
         return $current >= $minimum;
     }

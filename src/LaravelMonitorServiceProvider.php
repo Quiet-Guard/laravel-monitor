@@ -5,6 +5,8 @@ namespace LaBoiteACode\LaravelMonitor;
 use Illuminate\Contracts\Debug\ExceptionHandler;
 use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Log\Events\MessageLogged;
+use Illuminate\Queue\Events\JobFailed;
+use Illuminate\Queue\Events\JobProcessed;
 use Illuminate\Support\ServiceProvider;
 use LaBoiteACode\LaravelMonitor\Http\Transport;
 use LaBoiteACode\LaravelMonitor\Support\LogCollector;
@@ -120,12 +122,18 @@ class LaravelMonitorServiceProvider extends ServiceProvider
             }
         });
 
-        $this->app->terminating(function (): void {
+        $flush = function (): void {
             try {
                 $this->app->make(LogCollector::class)->flush();
             } catch (Throwable) {
                 // Flushing must never break the host application.
             }
-        });
+        };
+
+        // HTTP requests and console commands flush on terminate; long-running
+        // queue workers never "terminate" between jobs, so flush per job too.
+        $this->app->terminating($flush);
+        $this->app['events']->listen(JobProcessed::class, $flush);
+        $this->app['events']->listen(JobFailed::class, $flush);
     }
 }

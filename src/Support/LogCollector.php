@@ -49,15 +49,15 @@ class LogCollector
             return;
         }
 
+        // At capacity, flush what we have instead of silently dropping entries.
         if (count($this->entries) >= (int) ($this->config['max_batch'] ?? 200)) {
-            return;
+            $this->flush();
         }
 
         $this->entries[] = [
             'level' => strtolower($level),
             'message' => $message,
             'context' => $this->scrubber->scrub($this->normalize($context)),
-            'channel' => $this->config['channel'] ?? null,
             'environment' => $this->app->environment(),
             'release' => $this->config['release'] ?? null,
             'logged_at' => now()->toIso8601String(),

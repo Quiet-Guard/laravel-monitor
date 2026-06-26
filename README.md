@@ -46,6 +46,11 @@ MONITOR_ENVIRONMENTS=production,staging
 MONITOR_RELEASE=${GIT_SHA}
 MONITOR_QUEUE=false        # or a queue connection name to report asynchronously
 MONITOR_TIMEOUT=3
+
+# Application logs (opt-in)
+MONITOR_LOGS_ENABLED=true
+MONITOR_LOG_LEVEL=warning  # minimum PSR-3 level to forward
+MONITOR_LOGS_MAX_BATCH=200
 ```
 
 `MONITOR_KEY` is the per-project API key generated in the LaravelMonitor
@@ -60,6 +65,15 @@ configuration errors are swallowed and never affect the host application.
 
 Set `MONITOR_QUEUE` to a queue connection to push reports onto a queue instead of
 sending them synchronously during the request.
+
+### Application logs
+
+With `MONITOR_LOGS_ENABLED=true`, the package listens to Laravel's `MessageLogged`
+event and forwards log messages at or above `MONITOR_LOG_LEVEL`. Entries are
+**buffered during the request and flushed once in a single batch** when the
+request (or command) terminates, so log forwarding adds at most one HTTP call.
+Log entries that carry an exception are skipped — they are already covered by the
+exception pipeline. Context values are scrubbed with the same rules as exceptions.
 
 ## Manual reporting
 

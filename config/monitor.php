@@ -60,6 +60,20 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Application logs
+    |--------------------------------------------------------------------------
+    | When enabled, log messages at or above "level" are buffered during the
+    | request and sent to the monitor server in a single batch. Log entries that
+    | carry an exception are ignored (they go through the exception pipeline).
+    */
+    'logs' => [
+        'enabled' => env('MONITOR_LOGS_ENABLED', false),
+        'level' => env('MONITOR_LOG_LEVEL', 'warning'),
+        'max_batch' => (int) env('MONITOR_LOGS_MAX_BATCH', 200),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Scrubbed keys
     |--------------------------------------------------------------------------
     | Request/context keys whose values are masked before leaving the app.

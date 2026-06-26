@@ -4,8 +4,10 @@ namespace LaBoiteACode\LaravelMonitor;
 
 use Illuminate\Contracts\Debug\ExceptionHandler;
 use Illuminate\Contracts\Foundation\Application;
+use Illuminate\Log\Events\MessageLogged;
 use Illuminate\Support\ServiceProvider;
 use LaBoiteACode\LaravelMonitor\Http\Transport;
+use LaBoiteACode\LaravelMonitor\Support\LogCollector;
 use LaBoiteACode\LaravelMonitor\Support\PayloadBuilder;
 use LaBoiteACode\LaravelMonitor\Support\Scrubber;
 use Throwable;
@@ -50,6 +52,20 @@ class LaravelMonitorServiceProvider extends ServiceProvider
                 $app['config']->get('monitor'),
             );
         });
+
+        $this->app->singleton(LogCollector::class, function (Application $app) {
+            $config = $app['config']->get('monitor');
+
+            return new LogCollector(
+                $app,
+                $app->make(Transport::class),
+                $app->make(Scrubber::class),
+                array_merge($config['logs'] ?? [], [
+                    'release' => $config['release'] ?? null,
+                    'queue' => $config['queue'] ?? false,
+                ]),
+            );
+        });
     }
 
     public function boot(): void
@@ -61,6 +77,7 @@ class LaravelMonitorServiceProvider extends ServiceProvider
         }
 
         $this->registerExceptionHook();
+        $this->registerLogHook();
     }
 
     /**
@@ -77,6 +94,38 @@ class LaravelMonitorServiceProvider extends ServiceProvider
 
         $handler->reportable(function (Throwable $e): void {
             $this->app->make(Monitor::class)->report($e);
+        });
+    }
+
+    /**
+     * Buffer application logs and flush them once the request/command ends.
+     */
+    private function registerLogHook(): void
+    {
+        $config = $this->app['config']->get('monitor');
+
+        if (! ($config['enabled'] ?? false) || ! ($config['logs']['enabled'] ?? false)) {
+            return;
+        }
+
+        if (blank($config['url'] ?? null) || blank($config['key'] ?? null)) {
+            return;
+        }
+
+        $this->app['events']->listen(MessageLogged::class, function (MessageLogged $event): void {
+            try {
+                $this->app->make(LogCollector::class)->add($event->level, $event->message, $event->context ?? []);
+            } catch (Throwable) {
+                // Capturing logs must never break the host application.
+            }
+        });
+
+        $this->app->terminating(function (): void {
+            try {
+                $this->app->make(LogCollector::class)->flush();
+            } catch (Throwable) {
+                // Flushing must never break the host application.
+            }
         });
     }
 }

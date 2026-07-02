@@ -2,6 +2,7 @@
 
 namespace LaBoiteACode\LaravelMonitor;
 
+use Illuminate\Console\Scheduling\Event;
 use Illuminate\Contracts\Debug\ExceptionHandler;
 use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Log\Events\MessageLogged;
@@ -91,6 +92,27 @@ class LaravelMonitorServiceProvider extends ServiceProvider
 
         $this->registerExceptionHook();
         $this->registerLogHook();
+        $this->registerSchedulerMacro();
+    }
+
+    /**
+     * `$schedule->command('reports:send')->daily()->monitorHeartbeat('reports-send')`
+     * — pings the heartbeat ONLY when the task succeeded, so a crashing task
+     * stays silent and triggers the overdue alert. Sugar over
+     * `php artisan monitor:heartbeat`.
+     */
+    private function registerSchedulerMacro(): void
+    {
+        if (Event::hasMacro('monitorHeartbeat')) {
+            return;
+        }
+
+        Event::macro('monitorHeartbeat', function (string $slug) {
+            /** @var Event $this */
+            return $this->onSuccess(function () use ($slug): void {
+                app(Transport::class)->ping($slug);
+            });
+        });
     }
 
     /**

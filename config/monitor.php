@@ -56,7 +56,7 @@ return [
     | Stack trace depth
     |--------------------------------------------------------------------------
     */
-    'trace_limit' => (int) env('MONITOR_TRACE_LIMIT', 50),
+    'trace_limit' => (int) env('MONITOR_TRACE_LIMIT', 0), // 0 = full stack trace (recommended); set a frame count to trim payloads
 
     /*
     |--------------------------------------------------------------------------

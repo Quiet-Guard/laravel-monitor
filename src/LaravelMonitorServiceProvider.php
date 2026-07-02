@@ -35,7 +35,7 @@ class LaravelMonitorServiceProvider extends ServiceProvider
             return new PayloadBuilder(
                 $app,
                 $app->make(Scrubber::class),
-                (int) ($config['trace_limit'] ?? 50),
+                (int) ($config['trace_limit'] ?? 0),
                 $config['release'] ?? null,
             );
         });

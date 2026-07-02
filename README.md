@@ -1,4 +1,4 @@
-# LaravelMonitor — Client SDK
+# LaravelMonitor: Client SDK
 
 Report exceptions from any Laravel application to your [LaravelMonitor](../../) server.
 
@@ -72,7 +72,7 @@ With `MONITOR_LOGS_ENABLED=true`, the package listens to Laravel's `MessageLogge
 event and forwards log messages at or above `MONITOR_LOG_LEVEL`. Entries are
 **buffered during the request and flushed once in a single batch** when the
 request (or command) terminates, so log forwarding adds at most one HTTP call.
-Log entries that carry an exception are skipped — they are already covered by the
+Log entries that carry an exception are skipped, they are already covered by the
 exception pipeline. Context values are scrubbed with the same rules as exceptions.
 
 ## Dependency vulnerability scanning

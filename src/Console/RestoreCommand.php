@@ -31,7 +31,7 @@ class RestoreCommand extends Command
         try {
             $secret = $cipher->unwrapPrivateKey($key['private_key_wrapped'], $key['kdf_salt'], (string) $passphrase);
         } catch (Throwable) {
-            $this->error('Wrong passphrase — cannot unwrap the private key.');
+            $this->error('Wrong passphrase, cannot unwrap the private key.');
 
             return self::FAILURE;
         }

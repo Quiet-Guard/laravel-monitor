@@ -9,6 +9,7 @@ use Illuminate\Queue\Events\JobFailed;
 use Illuminate\Queue\Events\JobProcessed;
 use Illuminate\Support\ServiceProvider;
 use LaBoiteACode\LaravelMonitor\Console\BackupCommand;
+use LaBoiteACode\LaravelMonitor\Console\HeartbeatCommand;
 use LaBoiteACode\LaravelMonitor\Console\ReportDependenciesCommand;
 use LaBoiteACode\LaravelMonitor\Console\RestoreCommand;
 use LaBoiteACode\LaravelMonitor\Http\Transport;
@@ -82,6 +83,7 @@ class LaravelMonitorServiceProvider extends ServiceProvider
 
             $this->commands([
                 ReportDependenciesCommand::class,
+                HeartbeatCommand::class,
                 BackupCommand::class,
                 RestoreCommand::class,
             ]);

@@ -60,6 +60,14 @@ class Transport
     }
 
     /**
+     * Ping a scheduled-task heartbeat (auto-registers on first ping).
+     */
+    public function ping(string $slug): bool
+    {
+        return $this->post('/api/v1/heartbeats/'.rawurlencode($slug), [], 'heartbeat');
+    }
+
+    /**
      * Fetch the team's encryption key material (public key + wrapped private key
      * + salt) for backup sealing / restoring.
      *

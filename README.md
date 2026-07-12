@@ -1,6 +1,8 @@
 # LaravelMonitor: Client SDK
 
-Report exceptions from any Laravel application to your [LaravelMonitor](../../) server.
+Report exceptions, application logs, dependencies and heartbeats from any
+Laravel application to your
+[LaravelMonitor](https://github.com/La-boite-a-code/LaravelMonitor) server.
 
 ## Requirements
 
@@ -9,22 +11,21 @@ Report exceptions from any Laravel application to your [LaravelMonitor](../../) 
 
 ## Installation
 
-While the package is developed inside the LaravelMonitor monorepo, install it
-from a path (or VCS) repository. In the **application you want to monitor**, add
-to its `composer.json`:
+In the **application you want to monitor**:
+
+```bash
+composer require laboiteacode/laravel-monitor
+```
+
+Until the package is published on Packagist, add a VCS repository to the
+application's `composer.json` first:
 
 ```json
 {
     "repositories": [
-        { "type": "vcs", "url": "https://github.com/la-boite-a-code/laravelmonitor" }
+        { "type": "vcs", "url": "https://github.com/La-boite-a-code/LaravelMonitor" }
     ]
 }
-```
-
-Then require it:
-
-```bash
-composer require laboiteacode/laravel-monitor
 ```
 
 The service provider and `Monitor` facade are auto-discovered.
@@ -87,6 +88,37 @@ php artisan monitor:dependencies
 Pass `--path` to point at a specific `composer.lock`. Nothing is sent when
 `MONITOR_ENABLED=false`.
 
+## Heartbeats (scheduled-task monitoring)
+
+Tell the server a scheduled task ran, so it can alert you when the task goes
+silent. The preferred wiring is the scheduler macro, which pings **only when
+the task succeeded**:
+
+```php
+Schedule::command('reports:send')->daily()->monitorHeartbeat('reports-send');
+```
+
+You can also ping manually, from a cron line for example:
+
+```bash
+php artisan monitor:heartbeat reports-send
+```
+
+The first ping auto-registers the heartbeat on the server; arm it there by
+setting its expected period.
+
+## Encrypted backups
+
+With the backups feature enabled on your plan, upload zero-knowledge encrypted
+backups to the vault. The archive is encrypted locally with a random key sealed
+to your team's public key; the server only ever stores opaque ciphertext.
+
+```bash
+php artisan monitor:backup --database            # database dump
+php artisan monitor:backup --path=storage/app    # folder archive
+php artisan monitor:restore {id} --output=/tmp   # decrypts locally with the team passphrase
+```
+
 ## Manual reporting
 
 ```php
@@ -104,5 +136,15 @@ try {
 ## Privacy
 
 Sensitive request/context keys (passwords, tokens, cookies, authorization
-headers, …) are masked before leaving your application. Extend the list via the
-`scrub` config key.
+headers...) are masked before leaving your application. Extend the list via the
+`scrub` config key. Stack-trace frame arguments are never sent.
+
+## Documentation
+
+Full documentation is served by your LaravelMonitor server under `/docs`
+(for example `https://monitor.example.com/docs`), including installation,
+alerting, heartbeats, uptime monitoring and encrypted backups guides.
+
+## License
+
+MIT. See [LICENSE](LICENSE).

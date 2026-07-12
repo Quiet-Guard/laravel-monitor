@@ -1,9 +1,28 @@
 {
     "name": "laboiteacode/laravel-monitor",
-    "description": "Client SDK to report exceptions from a Laravel application to a LaravelMonitor server.",
+    "description": "Client SDK to report exceptions, logs, dependencies and heartbeats from a Laravel application to a LaravelMonitor server.",
     "type": "library",
     "license": "MIT",
-    "keywords": ["laravel", "monitoring", "exceptions", "error-tracking"],
+    "keywords": [
+        "laravel",
+        "monitoring",
+        "exceptions",
+        "error-tracking",
+        "logging",
+        "heartbeats",
+        "backups"
+    ],
+    "authors": [
+        {
+            "name": "La boite a code",
+            "email": "alexandre@laboiteacode.fr"
+        }
+    ],
+    "homepage": "https://github.com/La-boite-a-code/LaravelMonitor",
+    "support": {
+        "issues": "https://github.com/La-boite-a-code/LaravelMonitor/issues",
+        "source": "https://github.com/La-boite-a-code/LaravelMonitor"
+    },
     "require": {
         "php": "^8.2",
         "laboiteacode/monitor-php": "^0.1",
@@ -24,6 +43,17 @@
             "LaBoiteACode\\LaravelMonitor\\Tests\\": "tests/"
         }
     },
+    "repositories": [
+        {
+            "type": "path",
+            "url": "../monitor-php",
+            "options": {
+                "versions": {
+                    "laboiteacode/monitor-php": "0.1.0"
+                }
+            }
+        }
+    ],
     "extra": {
         "laravel": {
             "providers": [

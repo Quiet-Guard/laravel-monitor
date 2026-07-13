@@ -3,29 +3,41 @@
 Report exceptions, application logs, dependencies and heartbeats from any
 Laravel application to your
 [LaravelMonitor](https://github.com/La-boite-a-code/LaravelMonitor) server.
+Built on the framework-agnostic core `laboiteacode/monitor-php`, the same
+engine that powers the Symfony bundle and the WordPress plugin.
 
 ## Requirements
 
-- PHP 8.2+
+- PHP 8.2+ with `ext-curl` and `ext-sodium` (required by the core) and
+  `ext-phar` (folder backups)
 - Laravel 11, 12 or 13
 
 ## Installation
 
-In the **application you want to monitor**:
+The package is not published on Packagist yet. Once it is, installing will be a
+plain `composer require laboiteacode/laravel-monitor`.
+
+Until then, install it from a clone of the monorepo using path repositories.
+Clone the repository next to the **application you want to monitor**:
 
 ```bash
-composer require laboiteacode/laravel-monitor
+git clone https://github.com/La-boite-a-code/LaravelMonitor.git
 ```
 
-Until the package is published on Packagist, add a VCS repository to the
-application's `composer.json` first:
+Then declare the SDK and its core in the application's `composer.json` and
+require the SDK:
 
 ```json
 {
     "repositories": [
-        { "type": "vcs", "url": "https://github.com/La-boite-a-code/LaravelMonitor" }
+        { "type": "path", "url": "../LaravelMonitor/packages/laravel-monitor-client", "options": { "versions": { "laboiteacode/laravel-monitor": "0.1.0" } } },
+        { "type": "path", "url": "../LaravelMonitor/packages/monitor-php", "options": { "versions": { "laboiteacode/monitor-php": "0.1.0" } } }
     ]
 }
+```
+
+```bash
+composer require laboiteacode/laravel-monitor:^0.1
 ```
 
 The service provider and `Monitor` facade are auto-discovered.
@@ -47,6 +59,7 @@ MONITOR_ENVIRONMENTS=production,staging
 MONITOR_RELEASE=${GIT_SHA}
 MONITOR_QUEUE=false        # or a queue connection name to report asynchronously
 MONITOR_TIMEOUT=3
+MONITOR_TRACE_LIMIT=0      # 0 = full stack trace (default); a positive value trims
 
 # Application logs (opt-in)
 MONITOR_LOGS_ENABLED=true
@@ -74,7 +87,11 @@ event and forwards log messages at or above `MONITOR_LOG_LEVEL`. Entries are
 **buffered during the request and flushed once in a single batch** when the
 request (or command) terminates, so log forwarding adds at most one HTTP call.
 Log entries that carry an exception are skipped, they are already covered by the
-exception pipeline. Context values are scrubbed with the same rules as exceptions.
+exception pipeline. Context values are scrubbed with the same rules as exceptions,
+and the `MONITOR_ENVIRONMENTS` allowlist applies to logs exactly like exceptions.
+
+Logs require the **logs** feature on your plan, and forwarded entries count
+toward your team's monthly event quota alongside exceptions.
 
 ## Dependency vulnerability scanning
 
@@ -105,7 +122,9 @@ php artisan monitor:heartbeat reports-send
 ```
 
 The first ping auto-registers the heartbeat on the server; arm it there by
-setting its expected period.
+setting its expected period. The macro honours the `MONITOR_ENABLED` master
+switch and the `MONITOR_ENVIRONMENTS` allowlist, so a staging scheduler never
+pings a production heartbeat.
 
 ## Encrypted backups
 

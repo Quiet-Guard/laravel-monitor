@@ -97,7 +97,7 @@ class LaravelMonitorServiceProvider extends ServiceProvider
 
     /**
      * `$schedule->command('reports:send')->daily()->monitorHeartbeat('reports-send')`
-     * — pings the heartbeat ONLY when the task succeeded, so a crashing task
+     * pings the heartbeat ONLY when the task succeeded, so a crashing task
      * stays silent and triggers the overdue alert. Sugar over
      * `php artisan monitor:heartbeat`.
      */
@@ -110,6 +110,20 @@ class LaravelMonitorServiceProvider extends ServiceProvider
         Event::macro('monitorHeartbeat', function (string $slug) {
             /** @var Event $this */
             return $this->onSuccess(function () use ($slug): void {
+                // Same gates as exception reporting: the master switch and the
+                // environments allowlist apply to every passive pipeline.
+                $config = config('monitor');
+
+                if (! ($config['enabled'] ?? false)) {
+                    return;
+                }
+
+                $environments = $config['environments'] ?? [];
+
+                if ($environments !== [] && ! in_array(app()->environment(), $environments, true)) {
+                    return;
+                }
+
                 app(Transport::class)->ping($slug);
             });
         });
@@ -144,6 +158,13 @@ class LaravelMonitorServiceProvider extends ServiceProvider
         }
 
         if (blank($config['url'] ?? null) || blank($config['key'] ?? null)) {
+            return;
+        }
+
+        // The environments allowlist gates logs exactly like exceptions.
+        $environments = $config['environments'] ?? [];
+
+        if ($environments !== [] && ! in_array($this->app->environment(), $environments, true)) {
             return;
         }
 

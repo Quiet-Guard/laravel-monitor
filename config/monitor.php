@@ -28,7 +28,7 @@ return [
     | Only report when the current app environment is in this list. Leave empty
     | to report from every environment.
     */
-    'environments' => array_filter(explode(',', (string) env('MONITOR_ENVIRONMENTS', 'production,staging'))),
+    'environments' => array_values(array_filter(array_map('trim', explode(',', (string) env('MONITOR_ENVIRONMENTS', 'production,staging'))))),
 
     /*
     |--------------------------------------------------------------------------

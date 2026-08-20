@@ -21,7 +21,7 @@ class BackupCommand extends Command
     public function handle(Transport $transport, BackupCipher $cipher): int
     {
         if (! (config('monitor.enabled') ?? false)) {
-            $this->warn('LaravelMonitor is disabled (MONITOR_ENABLED=false).');
+            $this->warn('Quiet Guard is disabled (MONITOR_ENABLED=false).');
 
             return self::SUCCESS;
         }

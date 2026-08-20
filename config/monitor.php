@@ -14,7 +14,7 @@ return [
     |--------------------------------------------------------------------------
     | Server URL & project key
     |--------------------------------------------------------------------------
-    | The base URL of your LaravelMonitor server and the per-project API key
+    | The base URL of your Quiet Guard server and the per-project API key
     | generated in its dashboard.
     */
     'url' => env('MONITOR_URL'),

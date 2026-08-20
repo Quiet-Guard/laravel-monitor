@@ -1,8 +1,8 @@
-# LaravelMonitor: Client SDK
+# Quiet Guard: Client SDK
 
 Report exceptions, application logs, dependencies and heartbeats from any
 Laravel application to your
-[LaravelMonitor](https://github.com/La-boite-a-code/LaravelMonitor) server.
+[Quiet Guard](https://github.com/La-boite-a-code/Quiet Guard) server.
 Built on the framework-agnostic core `laboiteacode/monitor-php`, the same
 engine that powers the Symfony bundle and the WordPress plugin.
 
@@ -21,7 +21,7 @@ Until then, install it from a clone of the monorepo using path repositories.
 Clone the repository next to the **application you want to monitor**:
 
 ```bash
-git clone https://github.com/La-boite-a-code/LaravelMonitor.git
+git clone https://github.com/La-boite-a-code/Quiet Guard.git
 ```
 
 Then declare the SDK and its core in the application's `composer.json` and
@@ -30,8 +30,8 @@ require the SDK:
 ```json
 {
     "repositories": [
-        { "type": "path", "url": "../LaravelMonitor/packages/laravel-monitor-client", "options": { "versions": { "laboiteacode/laravel-monitor": "0.1.0" } } },
-        { "type": "path", "url": "../LaravelMonitor/packages/monitor-php", "options": { "versions": { "laboiteacode/monitor-php": "0.1.0" } } }
+        { "type": "path", "url": "../Quiet Guard/packages/laravel-monitor-client", "options": { "versions": { "laboiteacode/laravel-monitor": "0.1.0" } } },
+        { "type": "path", "url": "../Quiet Guard/packages/monitor-php", "options": { "versions": { "laboiteacode/monitor-php": "0.1.0" } } }
     ]
 }
 ```
@@ -67,7 +67,7 @@ MONITOR_LOG_LEVEL=warning  # minimum PSR-3 level to forward
 MONITOR_LOGS_MAX_BATCH=200
 ```
 
-`MONITOR_KEY` is the per-project API key generated in the LaravelMonitor
+`MONITOR_KEY` is the per-project API key generated in the Quiet Guard
 dashboard (shown only once at creation).
 
 ## How it works
@@ -160,7 +160,7 @@ headers...) are masked before leaving your application. Extend the list via the
 
 ## Documentation
 
-Full documentation is served by your LaravelMonitor server under `/docs`
+Full documentation is served by your Quiet Guard server under `/docs`
 (for example `https://monitor.example.com/docs`), including installation,
 alerting, heartbeats, uptime monitoring and encrypted backups guides.
 

@@ -9,14 +9,14 @@ class ReportDependenciesCommand extends Command
 {
     protected $signature = 'monitor:dependencies {--path= : Path to composer.lock (defaults to the application base path)}';
 
-    protected $description = 'Send this application\'s installed dependencies to LaravelMonitor for vulnerability scanning';
+    protected $description = 'Send this application\'s installed dependencies to Quiet Guard for vulnerability scanning';
 
     public function handle(Transport $transport): int
     {
         $config = config('monitor');
 
         if (! ($config['enabled'] ?? false)) {
-            $this->warn('LaravelMonitor is disabled (MONITOR_ENABLED=false). Nothing sent.');
+            $this->warn('Quiet Guard is disabled (MONITOR_ENABLED=false). Nothing sent.');
 
             return self::SUCCESS;
         }
@@ -38,7 +38,7 @@ class ReportDependenciesCommand extends Command
         }
 
         if ($transport->sendDependencies($packages)) {
-            $this->info(sprintf('Reported %d dependencies to LaravelMonitor.', count($packages)));
+            $this->info(sprintf('Reported %d dependencies to Quiet Guard.', count($packages)));
 
             return self::SUCCESS;
         }

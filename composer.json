@@ -1,6 +1,6 @@
 {
     "name": "laboiteacode/laravel-monitor",
-    "description": "Client SDK to report exceptions, logs, dependencies and heartbeats from a Laravel application to a LaravelMonitor server.",
+    "description": "Client SDK to report exceptions, logs, dependencies and heartbeats from a Laravel application to a Quiet Guard server.",
     "type": "library",
     "license": "MIT",
     "keywords": [
@@ -18,10 +18,10 @@
             "email": "alexandre@laboiteacode.fr"
         }
     ],
-    "homepage": "https://github.com/La-boite-a-code/LaravelMonitor",
+    "homepage": "https://github.com/La-boite-a-code/Quiet Guard",
     "support": {
-        "issues": "https://github.com/La-boite-a-code/LaravelMonitor/issues",
-        "source": "https://github.com/La-boite-a-code/LaravelMonitor"
+        "issues": "https://github.com/La-boite-a-code/Quiet Guard/issues",
+        "source": "https://github.com/La-boite-a-code/Quiet Guard"
     },
     "require": {
         "php": "^8.2",

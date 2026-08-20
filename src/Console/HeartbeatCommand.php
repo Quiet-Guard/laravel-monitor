@@ -18,14 +18,14 @@ class HeartbeatCommand extends Command
 {
     protected $signature = 'monitor:heartbeat {slug : Heartbeat identifier (letters, digits, dashes)}';
 
-    protected $description = 'Ping a LaravelMonitor heartbeat so the server knows this scheduled task ran';
+    protected $description = 'Ping a Quiet Guard heartbeat so the server knows this scheduled task ran';
 
     public function handle(Transport $transport): int
     {
         $config = config('monitor');
 
         if (! ($config['enabled'] ?? false)) {
-            $this->warn('LaravelMonitor is disabled (MONITOR_ENABLED=false). Nothing sent.');
+            $this->warn('Quiet Guard is disabled (MONITOR_ENABLED=false). Nothing sent.');
 
             return self::SUCCESS;
         }

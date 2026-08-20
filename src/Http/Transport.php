@@ -87,7 +87,7 @@ class Transport
 
             return $response->successful() ? $response->json() : null;
         } catch (Throwable $e) {
-            $this->logger->warning('LaravelMonitor: failed to fetch encryption key', [
+            $this->logger->warning('Quiet Guard: failed to fetch encryption key', [
                 'error' => $e->getMessage(),
                 self::INTERNAL => true,
             ]);
@@ -120,7 +120,7 @@ class Transport
 
             return $response->successful() ? $response->json() : null;
         } catch (Throwable $e) {
-            $this->logger->warning('LaravelMonitor: failed to upload backup', [
+            $this->logger->warning('Quiet Guard: failed to upload backup', [
                 'error' => $e->getMessage(),
                 self::INTERNAL => true,
             ]);
@@ -146,7 +146,7 @@ class Transport
 
             return $response->successful();
         } catch (Throwable $e) {
-            $this->logger->warning('LaravelMonitor: failed to download backup', [
+            $this->logger->warning('Quiet Guard: failed to download backup', [
                 'error' => $e->getMessage(),
                 self::INTERNAL => true,
             ]);
@@ -175,7 +175,7 @@ class Transport
 
             return $response->successful();
         } catch (Throwable $e) {
-            $this->logger->warning("LaravelMonitor: failed to send {$kind}", [
+            $this->logger->warning("Quiet Guard: failed to send {$kind}", [
                 'error' => $e->getMessage(),
                 self::INTERNAL => true,
             ]);

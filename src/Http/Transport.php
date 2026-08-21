@@ -3,6 +3,7 @@
 namespace LaBoiteACode\LaravelMonitor\Http;
 
 use Illuminate\Support\Facades\Http;
+use LaBoiteACode\Monitor\Support\ValueRedactor;
 use Psr\Log\LoggerInterface;
 use Throwable;
 
@@ -19,7 +20,21 @@ class Transport
         private readonly ?string $key,
         private readonly int $timeout,
         private readonly LoggerInterface $logger,
+        // Value masking is the last thing that happens to a payload. Doing it
+        // here rather than in each builder means a field added later cannot be
+        // forgotten: whatever reaches the wire has been through it. Null keeps
+        // the previous behaviour for anyone constructing this by hand.
+        private readonly ?ValueRedactor $redactor = null,
     ) {}
+
+    /**
+     * @param  array<mixed>  $payload
+     * @return array<mixed>
+     */
+    private function redacted(array $payload): array
+    {
+        return $this->redactor?->redactAll($payload) ?? $payload;
+    }
 
     /**
      * Send an exception payload to the monitor server.
@@ -28,7 +43,7 @@ class Transport
      */
     public function send(array $payload): bool
     {
-        return $this->post('/api/v1/ingest', $payload, 'exception');
+        return $this->post('/api/v1/ingest', $this->redacted($payload), 'exception');
     }
 
     /**
@@ -42,7 +57,7 @@ class Transport
             return true;
         }
 
-        return $this->post('/api/v1/logs', ['logs' => $logs], 'logs');
+        return $this->post('/api/v1/logs', $this->redacted(['logs' => $logs]), 'logs');
     }
 
     /**

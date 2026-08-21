@@ -78,6 +78,31 @@ return [
     |--------------------------------------------------------------------------
     | Request/context keys whose values are masked before leaving the app.
     */
+    /*
+    | Value masking, by shape rather than by field name.
+    |
+    | 'scrub' below hides a value because of what its field is CALLED. It never
+    | sees an address written into the free text of an error message, into a URL
+    | segment, or into a field somebody named "reference", which is the larger
+    | share of what actually leaks.
+    |
+    | These patterns look at the value itself, before anything is sent, so the
+    | data never reaches the monitoring server at all. The shapes that carry a
+    | checksum are verified rather than merely matched, so a sixteen digit order
+    | reference is not mistaken for a card number.
+    |
+    | Available: email, iban, nir (French social security), card, phone (French
+    | numbering plan). Remove the ones that produce false positives on your data,
+    | or set the whole array to [] to send payloads untouched.
+    */
+    'redact' => ['email', 'iban', 'nir', 'card', 'phone'],
+
+    /*
+    | Your own shapes: label => PCRE pattern. The label appears in the payload,
+    | for example 'customer_ref' masks as [redacted:customer_ref].
+    */
+    'redact_custom' => [],
+
     'scrub' => [
         'password',
         'password_confirmation',

@@ -17,6 +17,7 @@ use LaBoiteACode\LaravelMonitor\Http\Transport;
 use LaBoiteACode\LaravelMonitor\Support\LogCollector;
 use LaBoiteACode\LaravelMonitor\Support\PayloadBuilder;
 use LaBoiteACode\LaravelMonitor\Support\Scrubber;
+use LaBoiteACode\Monitor\Support\ValueRedactor;
 use Throwable;
 
 class LaravelMonitorServiceProvider extends ServiceProvider
@@ -48,6 +49,10 @@ class LaravelMonitorServiceProvider extends ServiceProvider
                 $config['key'] ?? null,
                 (int) ($config['timeout'] ?? 3),
                 $app->make('log'),
+                new ValueRedactor(
+                    $config['redact'] ?? ValueRedactor::PATTERNS,
+                    $config['redact_custom'] ?? [],
+                ),
             );
         });
 

@@ -2,7 +2,7 @@
 
 Report exceptions, application logs, dependencies and heartbeats from any
 Laravel application to your
-[Quiet Guard](https://github.com/La-boite-a-code/Quiet Guard) server.
+[Quiet Guard](https://github.com/Quiet-Guard/laravel-monitor) server.
 Built on the framework-agnostic core `laboiteacode/monitor-php`, the same
 engine that powers the Symfony bundle and the WordPress plugin.
 
@@ -21,7 +21,7 @@ Until then, install it from a clone of the monorepo using path repositories.
 Clone the repository next to the **application you want to monitor**:
 
 ```bash
-git clone https://github.com/La-boite-a-code/Quiet Guard.git
+git clone https://github.com/La-boite-a-code/LaravelMonitor.git
 ```
 
 Then declare the SDK and its core in the application's `composer.json` and
@@ -30,8 +30,8 @@ require the SDK:
 ```json
 {
     "repositories": [
-        { "type": "path", "url": "../Quiet Guard/packages/laravel-monitor-client", "options": { "versions": { "laboiteacode/laravel-monitor": "0.1.0" } } },
-        { "type": "path", "url": "../Quiet Guard/packages/monitor-php", "options": { "versions": { "laboiteacode/monitor-php": "0.1.0" } } }
+        { "type": "path", "url": "../LaravelMonitor/packages/laravel-monitor-client", "options": { "versions": { "laboiteacode/laravel-monitor": "0.1.0" } } },
+        { "type": "path", "url": "../LaravelMonitor/packages/monitor-php", "options": { "versions": { "laboiteacode/monitor-php": "0.1.0" } } }
     ]
 }
 ```

@@ -53,13 +53,8 @@
     },
     "repositories": [
         {
-            "type": "path",
-            "url": "../monitor-php",
-            "options": {
-                "versions": {
-                    "laboiteacode/monitor-php": "0.1.0"
-                }
-            }
+            "type": "vcs",
+            "url": "https://github.com/Quiet-Guard/monitor-php"
         }
     ],
     "extra": {

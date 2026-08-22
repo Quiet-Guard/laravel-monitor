@@ -17,21 +17,16 @@ engine that powers the Symfony bundle and the WordPress plugin.
 The package is not published on Packagist yet. Once it is, installing will be a
 plain `composer require laboiteacode/laravel-monitor`.
 
-Until then, install it from a clone of the monorepo using path repositories.
-Clone the repository next to the **application you want to monitor**:
+Until then, declare the public repositories in the application's `composer.json`
+and require it. Nothing to clone, nothing to keep in sync:
 
-```bash
-git clone https://github.com/La-boite-a-code/LaravelMonitor.git
-```
 
-Then declare the SDK and its core in the application's `composer.json` and
-require the SDK:
 
 ```json
 {
     "repositories": [
-        { "type": "path", "url": "../LaravelMonitor/packages/laravel-monitor-client", "options": { "versions": { "laboiteacode/laravel-monitor": "0.1.0" } } },
-        { "type": "path", "url": "../LaravelMonitor/packages/monitor-php", "options": { "versions": { "laboiteacode/monitor-php": "0.1.0" } } }
+        { "type": "vcs", "url": "https://github.com/Quiet-Guard/laravel-monitor" },
+        { "type": "vcs", "url": "https://github.com/Quiet-Guard/monitor-php" }
     ]
 }
 ```

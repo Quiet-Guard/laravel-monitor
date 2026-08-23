@@ -113,5 +113,24 @@ return [
         'php_auth_pw',
         'api_key',
         'access_token',
+
+        // The headers that carry a visitor's IP address.
+        //
+        // The payload sends every header it finds, and behind a reverse proxy,
+        // which is the ordinary production topology, one of these holds the IP
+        // of the person who hit the page. That is personal data, and it does
+        // not identify OUR customer: it identifies THEIR visitor, who never
+        // chose us and whose address an exception report does not need.
+        //
+        // Masked by NAME rather than by shape. ValueRedactor works on shapes
+        // and has no IP pattern on purpose: a dotted quad is indistinguishable
+        // from a version string without context, and a pattern that masks too
+        // much is a pattern somebody switches off. The header name is exact.
+        'x-forwarded-for',
+        'x-real-ip',
+        'cf-connecting-ip',
+        'true-client-ip',
+        'x-client-ip',
+        'forwarded',
     ],
 ];

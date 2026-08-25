@@ -2,7 +2,7 @@
 
 Report exceptions, application logs, dependencies and heartbeats from any
 Laravel application to your
-[Quiet Guard](https://github.com/Quiet-Guard/laravel-monitor) server.
+Quiet Guard server.
 Built on the framework-agnostic core `laboiteacode/monitor-php`, the same
 engine that powers the Symfony bundle and the WordPress plugin.
 

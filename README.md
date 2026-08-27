@@ -20,8 +20,6 @@ plain `composer require laboiteacode/laravel-monitor`.
 Until then, declare the public repositories in the application's `composer.json`
 and require it. Nothing to clone, nothing to keep in sync:
 
-
-
 ```json
 {
     "repositories": [

@@ -3,6 +3,7 @@
 namespace LaBoiteACode\LaravelMonitor;
 
 use Illuminate\Contracts\Foundation\Application;
+use Illuminate\Http\Request;
 use LaBoiteACode\LaravelMonitor\Http\Transport;
 use LaBoiteACode\LaravelMonitor\Jobs\SendExceptionToMonitor;
 use LaBoiteACode\LaravelMonitor\Support\PayloadBuilder;
@@ -68,6 +69,40 @@ class Monitor
             return false;
         }
 
+        if ($this->onIgnoredPath()) {
+            return false;
+        }
+
         return true;
+    }
+
+    /**
+     * Whether the request being served is one whose exceptions are not reported.
+     *
+     * Anything unexpected here reads as "no match" and reporting carries on:
+     * losing a report is the worse of the two failures. A console command
+     * carries a dummy request whose path is "/", which matches nothing.
+     */
+    private function onIgnoredPath(): bool
+    {
+        try {
+            $patterns = $this->config['ignore_paths'] ?? [];
+
+            if (! is_array($patterns)) {
+                return false;
+            }
+
+            $patterns = array_values(array_filter($patterns, 'is_string'));
+
+            if ($patterns === [] || ! $this->app->bound('request')) {
+                return false;
+            }
+
+            $request = $this->app->make('request');
+
+            return $request instanceof Request && $request->is(...$patterns);
+        } catch (Throwable) {
+            return false;
+        }
     }
 }

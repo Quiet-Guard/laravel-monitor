@@ -32,6 +32,20 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Ignored request paths
+    |--------------------------------------------------------------------------
+    | Request paths whose exceptions are never reported, written in the syntax
+    | Illuminate\Http\Request::is() accepts ("api/v1/*"). Empty by default.
+    |
+    | An application that hosts a monitoring endpoint of its own should not
+    | report to that same endpoint the exceptions it raises while serving it.
+    | Not a loop, the transport swallows its own failures, but pointless
+    | amplification at the worst possible moment.
+    */
+    'ignore_paths' => [],
+
+    /*
+    |--------------------------------------------------------------------------
     | Release
     |--------------------------------------------------------------------------
     | An identifier for the deployed version (e.g. a git SHA or tag). Helps

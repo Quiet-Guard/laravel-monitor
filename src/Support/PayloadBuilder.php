@@ -1,6 +1,6 @@
 <?php
 
-namespace LaBoiteACode\LaravelMonitor\Support;
+namespace QuietGuard\LaravelMonitor\Support;
 
 use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Http\Request;

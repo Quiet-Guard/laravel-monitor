@@ -1,6 +1,6 @@
 <?php
 
-namespace LaBoiteACode\LaravelMonitor\Facades;
+namespace QuietGuard\LaravelMonitor\Facades;
 
 use Illuminate\Support\Facades\Facade;
 use Throwable;
@@ -8,12 +8,12 @@ use Throwable;
 /**
  * @method static void report(Throwable $e)
  *
- * @see \LaBoiteACode\LaravelMonitor\Monitor
+ * @see \QuietGuard\LaravelMonitor\Monitor
  */
 class Monitor extends Facade
 {
     protected static function getFacadeAccessor(): string
     {
-        return \LaBoiteACode\LaravelMonitor\Monitor::class;
+        return \QuietGuard\LaravelMonitor\Monitor::class;
     }
 }

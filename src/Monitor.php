@@ -1,13 +1,13 @@
 <?php
 
-namespace LaBoiteACode\LaravelMonitor;
+namespace QuietGuard\LaravelMonitor;
 
 use Illuminate\Contracts\Bus\Dispatcher;
 use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Http\Request;
-use LaBoiteACode\LaravelMonitor\Http\Transport;
-use LaBoiteACode\LaravelMonitor\Jobs\SendExceptionToMonitor;
-use LaBoiteACode\LaravelMonitor\Support\PayloadBuilder;
+use QuietGuard\LaravelMonitor\Http\Transport;
+use QuietGuard\LaravelMonitor\Jobs\SendExceptionToMonitor;
+use QuietGuard\LaravelMonitor\Support\PayloadBuilder;
 use Throwable;
 
 class Monitor

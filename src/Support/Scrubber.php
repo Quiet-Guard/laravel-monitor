@@ -1,8 +1,8 @@
 <?php
 
-namespace LaBoiteACode\LaravelMonitor\Support;
+namespace QuietGuard\LaravelMonitor\Support;
 
-use LaBoiteACode\Monitor\Support\Scrubber as CoreScrubber;
+use QuietGuard\Monitor\Support\Scrubber as CoreScrubber;
 
 /**
  * Thin alias over the framework-agnostic core scrubber so every client in the

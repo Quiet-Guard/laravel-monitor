@@ -1,11 +1,11 @@
 <?php
 
-namespace LaBoiteACode\LaravelMonitor\Console;
+namespace QuietGuard\LaravelMonitor\Console;
 
 use Illuminate\Console\Command;
-use LaBoiteACode\LaravelMonitor\Http\Transport;
-use LaBoiteACode\LaravelMonitor\Support\BackupCipher;
 use PharData;
+use QuietGuard\LaravelMonitor\Http\Transport;
+use QuietGuard\LaravelMonitor\Support\BackupCipher;
 use Symfony\Component\Process\Process;
 use Throwable;
 

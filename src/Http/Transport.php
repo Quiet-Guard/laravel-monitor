@@ -1,10 +1,10 @@
 <?php
 
-namespace LaBoiteACode\LaravelMonitor\Http;
+namespace QuietGuard\LaravelMonitor\Http;
 
 use Illuminate\Support\Facades\Http;
-use LaBoiteACode\Monitor\Support\ValueRedactor;
 use Psr\Log\LoggerInterface;
+use QuietGuard\Monitor\Support\ValueRedactor;
 use Throwable;
 
 class Transport

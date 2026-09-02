@@ -1,11 +1,11 @@
 <?php
 
-namespace LaBoiteACode\LaravelMonitor\Jobs;
+namespace QuietGuard\LaravelMonitor\Jobs;
 
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Queue\InteractsWithQueue;
-use LaBoiteACode\LaravelMonitor\Http\Transport;
+use QuietGuard\LaravelMonitor\Http\Transport;
 
 class SendExceptionToMonitor implements ShouldQueue
 {

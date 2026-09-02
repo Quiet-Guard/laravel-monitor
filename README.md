@@ -128,7 +128,7 @@ php artisan monitor:restore {id} --output=/tmp   # decrypts locally with the tea
 ## Manual reporting
 
 ```php
-use LaBoiteACode\LaravelMonitor\Facades\Monitor;
+use QuietGuard\LaravelMonitor\Facades\Monitor;
 
 try {
     // ...

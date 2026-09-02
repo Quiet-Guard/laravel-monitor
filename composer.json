@@ -16,7 +16,7 @@
         {
             "name": "Alexandre Ribes",
             "email": "alexandre@laboiteacode.fr",
-            "homepage": "https://laboiteacode.fr"
+            "homepage": "https://quietguard.dev"
         }
     ],
     "homepage": "https://github.com/Quiet-Guard/laravel-monitor",
@@ -43,21 +43,21 @@
     },
     "autoload": {
         "psr-4": {
-            "LaBoiteACode\\LaravelMonitor\\": "src/"
+            "QuietGuard\\LaravelMonitor\\": "src/"
         }
     },
     "autoload-dev": {
         "psr-4": {
-            "LaBoiteACode\\LaravelMonitor\\Tests\\": "tests/"
+            "QuietGuard\\LaravelMonitor\\Tests\\": "tests/"
         }
     },
     "extra": {
         "laravel": {
             "providers": [
-                "LaBoiteACode\\LaravelMonitor\\LaravelMonitorServiceProvider"
+                "QuietGuard\\LaravelMonitor\\LaravelMonitorServiceProvider"
             ],
             "aliases": {
-                "Monitor": "LaBoiteACode\\LaravelMonitor\\Facades\\Monitor"
+                "Monitor": "QuietGuard\\LaravelMonitor\\Facades\\Monitor"
             }
         }
     },

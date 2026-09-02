@@ -1,11 +1,11 @@
 <?php
 
-namespace LaBoiteACode\LaravelMonitor\Support;
+namespace QuietGuard\LaravelMonitor\Support;
 
 use Illuminate\Contracts\Bus\Dispatcher;
 use Illuminate\Contracts\Foundation\Application;
-use LaBoiteACode\LaravelMonitor\Http\Transport;
-use LaBoiteACode\LaravelMonitor\Jobs\SendLogsToMonitor;
+use QuietGuard\LaravelMonitor\Http\Transport;
+use QuietGuard\LaravelMonitor\Jobs\SendLogsToMonitor;
 
 class LogCollector
 {

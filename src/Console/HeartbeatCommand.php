@@ -1,9 +1,9 @@
 <?php
 
-namespace LaBoiteACode\LaravelMonitor\Console;
+namespace QuietGuard\LaravelMonitor\Console;
 
 use Illuminate\Console\Command;
-use LaBoiteACode\LaravelMonitor\Http\Transport;
+use QuietGuard\LaravelMonitor\Http\Transport;
 
 /**
  * Ping a scheduled-task heartbeat. Chain it after the task you monitor:

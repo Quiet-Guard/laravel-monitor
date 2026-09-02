@@ -1,8 +1,8 @@
 <?php
 
-namespace LaBoiteACode\LaravelMonitor\Support;
+namespace QuietGuard\LaravelMonitor\Support;
 
-use LaBoiteACode\Monitor\Backup\BackupCipher as CoreBackupCipher;
+use QuietGuard\Monitor\Backup\BackupCipher as CoreBackupCipher;
 
 /**
  * Laravel adapter alias for the framework-agnostic backup cipher. The crypto

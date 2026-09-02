@@ -1,6 +1,6 @@
 <?php
 
-namespace LaBoiteACode\LaravelMonitor;
+namespace QuietGuard\LaravelMonitor;
 
 use Illuminate\Console\Scheduling\Event;
 use Illuminate\Contracts\Debug\ExceptionHandler;
@@ -9,15 +9,15 @@ use Illuminate\Log\Events\MessageLogged;
 use Illuminate\Queue\Events\JobFailed;
 use Illuminate\Queue\Events\JobProcessed;
 use Illuminate\Support\ServiceProvider;
-use LaBoiteACode\LaravelMonitor\Console\BackupCommand;
-use LaBoiteACode\LaravelMonitor\Console\HeartbeatCommand;
-use LaBoiteACode\LaravelMonitor\Console\ReportDependenciesCommand;
-use LaBoiteACode\LaravelMonitor\Console\RestoreCommand;
-use LaBoiteACode\LaravelMonitor\Http\Transport;
-use LaBoiteACode\LaravelMonitor\Support\LogCollector;
-use LaBoiteACode\LaravelMonitor\Support\PayloadBuilder;
-use LaBoiteACode\LaravelMonitor\Support\Scrubber;
-use LaBoiteACode\Monitor\Support\ValueRedactor;
+use QuietGuard\LaravelMonitor\Console\BackupCommand;
+use QuietGuard\LaravelMonitor\Console\HeartbeatCommand;
+use QuietGuard\LaravelMonitor\Console\ReportDependenciesCommand;
+use QuietGuard\LaravelMonitor\Console\RestoreCommand;
+use QuietGuard\LaravelMonitor\Http\Transport;
+use QuietGuard\LaravelMonitor\Support\LogCollector;
+use QuietGuard\LaravelMonitor\Support\PayloadBuilder;
+use QuietGuard\LaravelMonitor\Support\Scrubber;
+use QuietGuard\Monitor\Support\ValueRedactor;
 use Throwable;
 
 class LaravelMonitorServiceProvider extends ServiceProvider

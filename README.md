@@ -50,7 +50,7 @@ MONITOR_KEY=lm_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 # Optional
 MONITOR_ENVIRONMENTS=production,staging
 MONITOR_RELEASE=${GIT_SHA}
-MONITOR_QUEUE=false        # or a queue connection name to report asynchronously
+MONITOR_QUEUE=false        # false: synchronous. true: the app's default queue connection. A connection name: that connection.
 MONITOR_TIMEOUT=3
 MONITOR_TRACE_LIMIT=0      # 0 = full stack trace (default); a positive value trims
 
@@ -70,8 +70,17 @@ handler, so every reported exception is forwarded to the monitor server **withou
 changing your existing logging**. Reporting is fail-safe: network or
 configuration errors are swallowed and never affect the host application.
 
-Set `MONITOR_QUEUE` to a queue connection to push reports onto a queue instead of
-sending them synchronously during the request.
+`MONITOR_QUEUE` controls how a report leaves: `false` (the default) sends it
+synchronously during the request, `true` pushes it onto the application's default
+queue connection, and a connection name pushes it onto that connection instead.
+A queue worker must be running for a queued report to actually leave.
+
+By default every exception is reported. Set `ignore_paths` in `config/monitor.php`
+to a list of request paths whose exceptions are never reported, written in the
+syntax `Illuminate\Http\Request::is()` accepts (for example `api/v1/*`); empty by
+default. It only gates exceptions, logs are unaffected. Useful when the
+application hosts a monitoring endpoint of its own: the exceptions raised while
+serving that endpoint should not be reported back to it.
 
 ### Application logs
 

@@ -14,7 +14,7 @@ class BackupCommand extends Command
     protected $signature = 'monitor:backup
         {--database : Back up the default database connection}
         {--path= : Back up a file or directory}
-        {--name= : Optional label for the backup}';
+        {--name= : Optional label for the backup (printable ASCII, no slashes, up to 255 characters)}';
 
     protected $description = 'Create an encrypted backup (database dump or folder) and upload it to the zero-knowledge vault';
 
@@ -64,7 +64,12 @@ class BackupCommand extends Command
             return self::SUCCESS;
         }
 
-        $this->error('Upload failed (check MONITOR_URL / MONITOR_KEY and your storage quota).');
+        // The server's own words when it gave any: it names the field it
+        // refused or the quota that is full, which the generic line below
+        // guesses at and gets wrong for every rejection it can explain.
+        $this->error($transport->lastError() !== null
+            ? 'Upload refused: '.$transport->lastError()
+            : 'Upload failed (check MONITOR_URL / MONITOR_KEY and your storage quota).');
 
         return self::FAILURE;
     }

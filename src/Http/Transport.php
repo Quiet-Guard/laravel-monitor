@@ -116,6 +116,8 @@ class Transport
      *
      * @return array<string, mixed>|null the created backup metadata, or null on failure
      */
+    private ?string $lastError = null;
+
     public function uploadBackup(string $type, ?string $name, string $filePath): ?array
     {
         if (blank($this->url) || blank($this->key)) {
@@ -133,8 +135,22 @@ class Transport
                 'name' => $name,
             ]));
 
-            return $response->successful() ? $response->json() : null;
+            if ($response->successful()) {
+                $this->lastError = null;
+
+                return $response->json();
+            }
+
+            // Keep what the server said. A 422 names the field it refused and a
+            // 413 names the quota, and both used to be replaced by a guess at
+            // the caller ("check MONITOR_URL / MONITOR_KEY and your storage
+            // quota") that is wrong for every rejection the server can explain.
+            $this->lastError = is_string($message = $response->json('message')) ? $message : null;
+
+            return null;
         } catch (Throwable $e) {
+            $this->lastError = null;
+
             $this->logger->warning('Quiet Guard: failed to upload backup', [
                 'error' => $e->getMessage(),
                 self::INTERNAL => true,
@@ -142,6 +158,15 @@ class Transport
 
             return null;
         }
+    }
+
+    /**
+     * What the server said about the last upload it refused, when it said
+     * anything: null for a transport failure, where there is nothing to quote.
+     */
+    public function lastError(): ?string
+    {
+        return $this->lastError;
     }
 
     /**

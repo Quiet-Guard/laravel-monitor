@@ -3,7 +3,7 @@
 Report exceptions, application logs, dependencies and heartbeats from any
 Laravel application to your
 Quiet Guard server.
-Built on the framework-agnostic core `laboiteacode/monitor-php`, the same
+Built on the framework-agnostic core `quiet-guard/monitor-php`, the same
 engine that powers the Symfony bundle and the WordPress plugin.
 
 ## Requirements
@@ -14,23 +14,8 @@ engine that powers the Symfony bundle and the WordPress plugin.
 
 ## Installation
 
-The package is not published on Packagist yet. Once it is, installing will be a
-plain `composer require laboiteacode/laravel-monitor`.
-
-Until then, declare the public repositories in the application's `composer.json`
-and require it. Nothing to clone, nothing to keep in sync:
-
-```json
-{
-    "repositories": [
-        { "type": "vcs", "url": "https://github.com/Quiet-Guard/laravel-monitor" },
-        { "type": "vcs", "url": "https://github.com/Quiet-Guard/monitor-php" }
-    ]
-}
-```
-
 ```bash
-composer require laboiteacode/laravel-monitor:^0.1
+composer require quiet-guard/laravel-monitor
 ```
 
 The service provider and `Monitor` facade are auto-discovered.

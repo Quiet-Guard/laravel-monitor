@@ -1,5 +1,5 @@
 {
-    "name": "laboiteacode/laravel-monitor",
+    "name": "quiet-guard/laravel-monitor",
     "description": "Client SDK to report exceptions, logs, dependencies and heartbeats from a Laravel application to a Quiet Guard server.",
     "type": "library",
     "license": "MIT",
@@ -27,7 +27,7 @@
     "require": {
         "php": "^8.2",
         "ext-phar": "*",
-        "laboiteacode/monitor-php": "^0.1",
+        "quiet-guard/monitor-php": "^0.2",
         "illuminate/bus": "^11.0|^12.0|^13.0",
         "illuminate/console": "^11.0|^12.0|^13.0",
         "illuminate/contracts": "^11.0|^12.0|^13.0",
@@ -51,12 +51,6 @@
             "LaBoiteACode\\LaravelMonitor\\Tests\\": "tests/"
         }
     },
-    "repositories": [
-        {
-            "type": "vcs",
-            "url": "https://github.com/Quiet-Guard/monitor-php"
-        }
-    ],
     "extra": {
         "laravel": {
             "providers": [

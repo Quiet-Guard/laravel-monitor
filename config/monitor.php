@@ -133,6 +133,21 @@ return [
         'api_key',
         'access_token',
 
+        // The address of the page they came FROM.
+        //
+        // A referrer is a URL, and a URL is where applications put their
+        // one-off secrets: an unsubscribe link, a signed download, a password
+        // reset, a share link. This platform's own status page is addressed by
+        // a token that IS its access control, and a single click from it to
+        // anywhere else on the same site sent that token in this header, since
+        // Referrer-Policy: strict-origin-when-cross-origin sends the full URL
+        // same-origin. The next exception filed it in the operator's project.
+        //
+        // Masked by name like the IP headers below, and for the same reason:
+        // the value has no shape a redactor could recognise.
+        'referer',
+        'referrer',
+
         // The headers that carry a visitor's IP address.
         //
         // The payload sends every header it finds, and behind a reverse proxy,

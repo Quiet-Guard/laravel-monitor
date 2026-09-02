@@ -120,6 +120,11 @@ return [
     'scrub' => [
         'password',
         'password_confirmation',
+        // An encryption passphrase is the one value the platform is designed
+        // never to hold: it derives the key that opens a team's sealed data.
+        // Substring matching covers 'passphrase_confirmation' and the nested
+        // 'mountedActions.0.data.passphrase' a Livewire request carries.
+        'passphrase',
         'token',
         'secret',
         'authorization',

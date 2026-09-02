@@ -111,13 +111,14 @@ class Transport
         }
     }
 
+    /** The server's message for the last refused upload; null after a success, or when it said nothing. */
+    private ?string $lastError = null;
+
     /**
      * Upload an already-encrypted backup blob.
      *
      * @return array<string, mixed>|null the created backup metadata, or null on failure
      */
-    private ?string $lastError = null;
-
     public function uploadBackup(string $type, ?string $name, string $filePath): ?array
     {
         if (blank($this->url) || blank($this->key)) {

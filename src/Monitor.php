@@ -2,6 +2,7 @@
 
 namespace LaBoiteACode\LaravelMonitor;
 
+use Illuminate\Contracts\Bus\Dispatcher;
 use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Http\Request;
 use LaBoiteACode\LaravelMonitor\Http\Transport;
@@ -42,7 +43,11 @@ class Monitor
                     $job->onConnection($queue);
                 }
 
-                $this->app->make('bus')->dispatch($job);
+                // Dispatcher::class, not the 'bus' alias: no such alias exists,
+                // so make('bus') raised a BindingResolutionException that report()'s
+                // own catch swallowed, and a queued report was silently dropped.
+                // LogCollector already resolves it this way.
+                $this->app->make(Dispatcher::class)->dispatch($job);
 
                 return;
             }

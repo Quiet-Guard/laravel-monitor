@@ -14,6 +14,18 @@ engine that powers the Symfony bundle and the WordPress plugin.
 
 ## Installation
 
+Not on Packagist yet, so declare the repository in your own `composer.json`,
+then require the package. Drop the block the day the packages are listed.
+
+```json
+{
+    "repositories": [
+        { "type": "vcs", "url": "https://github.com/Quiet-Guard/laravel-monitor" },
+        { "type": "vcs", "url": "https://github.com/Quiet-Guard/monitor-php" }
+    ]
+}
+```
+
 ```bash
 composer require quiet-guard/laravel-monitor
 ```

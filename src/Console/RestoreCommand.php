@@ -21,7 +21,12 @@ class RestoreCommand extends Command
         $key = $transport->getEncryptionKey();
 
         if (! is_array($key) || blank($key['public_key'] ?? null) || blank($key['private_key_wrapped'] ?? null)) {
-            $this->error('Encryption is not configured for this team.');
+            // Comme pour monitor:backup : le serveur distingue « jamais activé »,
+            // « clé invalide », « forfait sans sauvegardes » et « je ne suis pas
+            // ce serveur », et ces quatre-là arrivaient ici en un seul null.
+            $this->error($transport->lastError() !== null
+                ? 'Could not fetch the encryption key: '.$transport->lastError()
+                : 'Encryption is not configured for this team.');
 
             return self::FAILURE;
         }

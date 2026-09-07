@@ -43,7 +43,12 @@ class ReportDependenciesCommand extends Command
             return self::SUCCESS;
         }
 
-        $this->error('Failed to report dependencies (check MONITOR_URL / MONITOR_KEY).');
+        // L'adresse appelée et le code reçu, parce que « vérifiez MONITOR_URL /
+        // MONITOR_KEY » ne dit pas laquelle des deux, ni ce que le serveur a
+        // répondu quand il a pris la peine de l'écrire.
+        $this->error($transport->lastError() !== null
+            ? 'Failed to report dependencies: '.$transport->lastError()
+            : 'Failed to report dependencies (check MONITOR_URL / MONITOR_KEY).');
 
         return self::FAILURE;
     }

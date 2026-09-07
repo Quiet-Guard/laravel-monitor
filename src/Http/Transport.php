@@ -2,6 +2,7 @@
 
 namespace QuietGuard\LaravelMonitor\Http;
 
+use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
 use Psr\Log\LoggerInterface;
 use QuietGuard\Monitor\Support\ValueRedactor;
@@ -90,7 +91,11 @@ class Transport
      */
     public function getEncryptionKey(): ?array
     {
+        $url = $this->baseUrl().'/api/v1/encryption-key';
+
         if (blank($this->url) || blank($this->key)) {
+            $this->lastError = 'MONITOR_URL or MONITOR_KEY is empty.';
+
             return null;
         }
 
@@ -98,12 +103,30 @@ class Transport
             $response = Http::acceptJson()
                 ->timeout($this->timeout)
                 ->withToken($this->key)
-                ->get(rtrim($this->url, '/').'/api/v1/encryption-key');
+                ->get($url);
 
-            return $response->successful() ? $response->json() : null;
+            if ($response->successful()) {
+                $this->lastError = null;
+
+                return $response->json();
+            }
+
+            // The server answers a different sentence for each of these, and
+            // all four used to arrive at the caller as one null: encryption
+            // never enabled (404), a key that is not this project's (401), a
+            // plan without backups (403), a URL that is not the server (404
+            // again, from somebody else's application). The caller then told
+            // the reader to go and enable encryption, which fixes three of them
+            // not at all.
+            $this->lastError = $this->explain($response, $url);
+
+            return null;
         } catch (Throwable $e) {
+            $this->lastError = "Could not reach {$url}: ".$e->getMessage();
+
             $this->logger->warning('Quiet Guard: failed to fetch encryption key', [
                 'error' => $e->getMessage(),
+                'url' => $url,
                 self::INTERNAL => true,
             ]);
 
@@ -111,8 +134,48 @@ class Transport
         }
     }
 
-    /** The server's message for the last refused upload; null after a success, or when it said nothing. */
+    /** The server's own words about the last call that failed; null after a success. */
     private ?string $lastError = null;
+
+    /**
+     * The server root, with the API prefix removed if the customer supplied it.
+     *
+     * Every method below appends /api/v1/... itself, so a base URL that already
+     * ends in /api/v1 produces /api/v1/api/v1/... and answers 404 on every
+     * call. That is not a hypothetical: "the base URL of your Quiet Guard
+     * server" and "the ingestion endpoint" are read as the same thing, the
+     * dashboard shows the API address, and the failure that follows is silent
+     * and looks like a bad key. It cost a real installation an evening.
+     *
+     * Trailing /api and /api/vN are both stripped, once. A self-hosted instance
+     * genuinely served from a path ending in /api is not something this system
+     * has ever produced, and the trade is worth it: the shape a reasonable
+     * person supplies has to work.
+     */
+    private function baseUrl(): string
+    {
+        $url = rtrim(trim((string) $this->url), '/');
+
+        return (string) preg_replace('#/api(/v\d+)?$#i', '', $url);
+    }
+
+    /**
+     * What went wrong, in terms the reader can act on.
+     *
+     * The server writes a specific sentence for every rejection it can explain,
+     * and every one of them used to be thrown away and replaced by a guess at
+     * the caller. The status and the address matter as much as the sentence: a
+     * 404 says the URL is wrong, a 401 says the key is, and telling the reader
+     * to "check MONITOR_URL / MONITOR_KEY" says neither.
+     */
+    private function explain(Response $response, string $url): string
+    {
+        $message = is_string($m = $response->json('message')) ? trim($m) : '';
+
+        return $message !== ''
+            ? "HTTP {$response->status()} from {$url}: {$message}"
+            : "HTTP {$response->status()} from {$url}";
+    }
 
     /**
      * Upload an already-encrypted backup blob.
@@ -131,7 +194,7 @@ class Transport
                 ->withToken($this->key)
                 ->attach('file', fopen($filePath, 'rb'), basename($filePath));
 
-            $response = $request->post(rtrim($this->url, '/').'/api/v1/backups', array_filter([
+            $response = $request->post($this->baseUrl().'/api/v1/backups', array_filter([
                 'type' => $type,
                 'name' => $name,
             ]));
@@ -146,11 +209,11 @@ class Transport
             // 413 names the quota, and both used to be replaced by a guess at
             // the caller ("check MONITOR_URL / MONITOR_KEY and your storage
             // quota") that is wrong for every rejection the server can explain.
-            $this->lastError = is_string($message = $response->json('message')) ? $message : null;
+            $this->lastError = $this->explain($response, $this->baseUrl().'/api/v1/backups');
 
             return null;
         } catch (Throwable $e) {
-            $this->lastError = null;
+            $this->lastError = 'Could not reach '.$this->baseUrl().'/api/v1/backups: '.$e->getMessage();
 
             $this->logger->warning('Quiet Guard: failed to upload backup', [
                 'error' => $e->getMessage(),
@@ -183,7 +246,7 @@ class Transport
             $response = Http::timeout(max($this->timeout, 120))
                 ->withToken($this->key)
                 ->withOptions(['sink' => $destPath])
-                ->get(rtrim($this->url, '/').'/api/v1/backups/'.$id);
+                ->get($this->baseUrl().'/api/v1/backups/'.$id);
 
             return $response->successful();
         } catch (Throwable $e) {
@@ -203,7 +266,11 @@ class Transport
      */
     private function post(string $path, array $payload, string $kind): bool
     {
+        $url = $this->baseUrl().$path;
+
         if (blank($this->url) || blank($this->key)) {
+            $this->lastError = 'MONITOR_URL or MONITOR_KEY is empty.';
+
             return false;
         }
 
@@ -212,12 +279,32 @@ class Transport
                 ->timeout($this->timeout)
                 ->withToken($this->key)
                 ->acceptJson()
-                ->post(rtrim($this->url, '/').$path, $payload);
+                ->post($url, $payload);
 
-            return $response->successful();
+            if ($response->successful()) {
+                $this->lastError = null;
+
+                return true;
+            }
+
+            $this->lastError = $this->explain($response, $url);
+
+            // A refusal the server took the trouble to explain is worth a line
+            // in the customer's own log: a 402 during dunning, a 403 on a plan
+            // gate and a 422 on a field are all invisible otherwise, and the
+            // exception path is the one place nobody is watching a console.
+            $this->logger->warning("Quiet Guard: {$kind} refused", [
+                'error' => $this->lastError,
+                self::INTERNAL => true,
+            ]);
+
+            return false;
         } catch (Throwable $e) {
+            $this->lastError = "Could not reach {$url}: ".$e->getMessage();
+
             $this->logger->warning("Quiet Guard: failed to send {$kind}", [
                 'error' => $e->getMessage(),
+                'url' => $url,
                 self::INTERNAL => true,
             ]);
 

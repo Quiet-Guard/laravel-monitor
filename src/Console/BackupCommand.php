@@ -26,10 +26,25 @@ class BackupCommand extends Command
             return self::SUCCESS;
         }
 
+        // Avant le réseau : un `monitor:backup` sans option se faisait répondre
+        // « le chiffrement n'est pas configuré » après un aller-retour, ce qui
+        // nomme le mauvais problème.
+        if (! $this->option('database') && blank($this->option('path'))) {
+            $this->error('Specify what to back up: --database or --path=<file|dir>.');
+
+            return self::FAILURE;
+        }
+
         $key = $transport->getEncryptionKey();
 
         if (! is_array($key) || blank($key['public_key'] ?? null)) {
-            $this->error('Encryption is not configured for this team (enable it in the dashboard first).');
+            // The server explains each of these differently and the client used
+            // to render all of them as "enable encryption in the dashboard":
+            // advice that fixes nothing when the URL is wrong, the key belongs
+            // to another project, or the plan has no backups.
+            $this->error($transport->lastError() !== null
+                ? 'Could not fetch the encryption key: '.$transport->lastError()
+                : 'Encryption is not configured for this team (enable it in the dashboard first).');
 
             return self::FAILURE;
         }

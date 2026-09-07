@@ -17,7 +17,15 @@ return [
     | The base URL of your Quiet Guard server and the per-project API key
     | generated in its dashboard.
     */
-    'url' => env('MONITOR_URL'),
+    // Le service hébergé est le cas normal, donc il est le défaut : un client
+    // qui installe le paquet n'a que sa clé à coller. Écrasable par
+    // MONITOR_URL pour une instance auto-hébergée.
+    //
+    // Le SDK ajoute /api/v1 lui-même. Une valeur qui le contient déjà est
+    // acceptée et normalisée (Transport::baseUrl) : c'est l'erreur qu'on fait
+    // en lisant « l'URL de l'API » dans la documentation, elle est donc rendue
+    // impossible plutôt que documentée.
+    'url' => env('MONITOR_URL', 'https://quietguard.dev'),
 
     'key' => env('MONITOR_KEY'),
 

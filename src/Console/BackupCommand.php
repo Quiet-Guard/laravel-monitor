@@ -112,14 +112,35 @@ class BackupCommand extends Command
         $target = $this->tempFile('sql');
 
         if (($db['driver'] ?? null) === 'sqlite') {
-            copy($db['database'], $target);
+            // copy() returns false rather than throwing, and a backup that
+            // silently did not happen is the one failure this command may not
+            // have. (Known limit, worth stating: in WAL mode the -wal sidecar
+            // is not copied, so a very recent commit can be missing. VACUUM
+            // INTO would fix that and is the next step here.)
+            if (! copy($db['database'], $target)) {
+                @unlink($target);
+
+                throw new \RuntimeException("Could not copy the sqlite database at {$db['database']}.");
+            }
 
             return $target;
         }
 
         $process = match ($db['driver'] ?? null) {
+            // --single-transaction, ou mysqldump verrouille chaque table le
+            // temps du dump : sur une base de production, c'est une panne
+            // qu'on s'inflige avec une commande vendue comme une sauvegarde.
+            // --no-tablespaces, ou MySQL 5.7.31+ exige le privilège PROCESS,
+            // qu'un utilisateur applicatif correctement restreint n'a pas.
+            // Le jeu de caractères, ou le client MariaDB retombe en utf8mb3 et
+            // abîme tout caractère sur quatre octets.
             'mysql', 'mariadb' => new Process(
-                ['mysqldump', '-h', (string) $db['host'], '-P', (string) $db['port'], '-u', (string) $db['username'], $db['database']],
+                [
+                    'mysqldump', '--single-transaction', '--no-tablespaces',
+                    '--default-character-set=utf8mb4',
+                    '-h', (string) $db['host'], '-P', (string) $db['port'],
+                    '-u', (string) $db['username'], $db['database'],
+                ],
                 env: ['MYSQL_PWD' => (string) $db['password']],
             ),
             'pgsql' => new Process(
@@ -131,15 +152,41 @@ class BackupCommand extends Command
 
         $process->setTimeout(600);
         $out = fopen($target, 'wb');
-        $process->run(function ($type, $buffer) use ($out) {
-            if ($type === Process::OUT) {
-                fwrite($out, $buffer);
-            }
-        });
-        fclose($out);
+        $short = false;
+
+        try {
+            // mysqldump writes to stdout and exits 0 whatever happened at the
+            // other end of the pipe, so a full disk here used to produce a
+            // short file, a successful process, an encrypted upload and the
+            // word "uploaded". The customer found out at restore time.
+            $process->run(function ($type, $buffer) use ($out, &$short) {
+                if ($type !== Process::OUT) {
+                    return;
+                }
+
+                $written = fwrite($out, $buffer);
+
+                if ($written === false || $written !== strlen($buffer)) {
+                    $short = true;
+                }
+            });
+        } finally {
+            $closed = fclose($out);
+        }
 
         if (! $process->isSuccessful()) {
+            @unlink($target);
+
             throw new \RuntimeException('Database dump failed: '.$process->getErrorOutput());
+        }
+
+        if ($short || ! $closed) {
+            @unlink($target);
+
+            throw new \RuntimeException(
+                "Ran out of room writing the dump to {$target}. A database backup needs about twice the ".
+                'dump size free in the temporary directory: once for the dump, once for the encrypted copy.'
+            );
         }
 
         return $target;

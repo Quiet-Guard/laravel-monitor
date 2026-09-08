@@ -95,7 +95,12 @@ class LogCollector
             $batch = $this->entries;
             $this->entries = [];
 
-            $queue = $this->config['queue'] ?? false;
+            // La même lecture que le chemin des exceptions, qui l'avait et que
+            // celui-ci n'avait pas : une connexion inconnue levait dans le
+            // dispatch, le catch du provider avalait, et le lot était déjà
+            // retiré du tampon. Jusqu'à cinq cents entrées perdues, à chaque
+            // vidange, sans un mot.
+            $queue = QueueConnection::resolve($this->app, $this->config['queue'] ?? false);
 
             if ($queue !== false) {
                 // Masqué avant la file, comme pour les exceptions : un contexte

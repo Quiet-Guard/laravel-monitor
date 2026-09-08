@@ -30,23 +30,26 @@ php artisan vendor:publish --tag=monitor-config
 
 ```dotenv
 MONITOR_ENABLED=true
-MONITOR_URL=https://monitor.example.com
 MONITOR_KEY=lm_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 # Optional
+MONITOR_URL=https://monitor.example.com   # defaults to the hosted service, https://quietguard.dev
 MONITOR_ENVIRONMENTS=production,staging
 MONITOR_RELEASE=${GIT_SHA}
-MONITOR_QUEUE=false        # false: synchronous. true: the app's default queue connection. A connection name: that connection.
+MONITOR_QUEUE=false        # false: synchronous. true: the app's default queue connection. A queue CONNECTION name: that connection.
 MONITOR_TIMEOUT=3
 MONITOR_TRACE_LIMIT=0      # 0 = full stack trace (default); a positive value trims
 
 # Application logs (opt-in)
 MONITOR_LOGS_ENABLED=true
 MONITOR_LOG_LEVEL=warning  # minimum PSR-3 level to forward
-MONITOR_LOGS_MAX_BATCH=200
+MONITOR_LOGS_MAX_BATCH=200 # clamped to 500, the server's own batch limit
 ```
 
 `MONITOR_KEY` is the per-project API key generated in the Quiet Guard
-dashboard (shown only once at creation).
+dashboard (shown only once at creation). `MONITOR_URL` already points at the
+hosted service, so set it only to reach a self-hosted instance; a value that
+already ends in `/api` or `/api/v1` is accepted and normalised, the SDK
+appending `/api/v1/...` itself.
 
 ## How it works
 
@@ -59,6 +62,17 @@ configuration errors are swallowed and never affect the host application.
 synchronously during the request, `true` pushes it onto the application's default
 queue connection, and a connection name pushes it onto that connection instead.
 A queue worker must be running for a queued report to actually leave.
+
+It names a queue **connection**, a key of `queue.connections`, not a queue:
+`default`, `monitoring` or `high` name none. An unknown value is refused for
+exception reports, with a warning naming the connections that do exist and a
+synchronous send instead. Payloads are masked before they are queued, so
+personal data never sits in clear in your `jobs` / `failed_jobs` tables, and a
+job whose send failed throws, so its second attempt is real.
+
+A refusal the server explains (a `402` during dunning, a `403` on a plan gate,
+a `422` on a field) is written to your own log as a warning naming the status,
+the address and what the server said.
 
 By default every exception is reported. Set `ignore_paths` in `config/monitor.php`
 to a list of request paths whose exceptions are never reported, written in the
@@ -122,8 +136,15 @@ to your team's public key; the server only ever stores opaque ciphertext.
 ```bash
 php artisan monitor:backup --database            # database dump
 php artisan monitor:backup --path=storage/app    # folder archive
+php artisan monitor:backup --database --keep=7   # rotate: keep the 7 newest of this type
+php artisan monitor:backups                      # list what the vault holds, with each id
 php artisan monitor:restore {id} --output=/tmp   # decrypts locally with the team passphrase
 ```
+
+Nothing on the server deletes a backup for you, so pass `--keep` on a scheduled
+one. `monitor:restore` checks the downloaded blob against the sha256 the server
+publishes before decrypting, so a damaged download is no longer reported the
+same way as a wrong passphrase.
 
 ## Manual reporting
 

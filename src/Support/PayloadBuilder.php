@@ -4,6 +4,7 @@ namespace QuietGuard\LaravelMonitor\Support;
 
 use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Http\Request;
+use QuietGuard\Monitor\Support\Cut;
 use Throwable;
 
 class PayloadBuilder
@@ -22,10 +23,10 @@ class PayloadBuilder
     {
         return [
             'exception' => [
-                'class' => $e::class,
-                'message' => $e->getMessage(),
+                'class' => Cut::to($e::class, 255),
+                'message' => Cut::to($e->getMessage(), 8192),
                 'code' => $e->getCode(),
-                'file' => $e->getFile(),
+                'file' => Cut::to($e->getFile(), 1024),
                 'line' => $e->getLine(),
                 'trace' => $this->trace($e),
             ],
@@ -64,7 +65,7 @@ class PayloadBuilder
     {
         $context = [
             'environment' => $this->app->environment(),
-            'release' => $this->release,
+            'release' => Cut::to($this->release, 255),
             'php_version' => PHP_VERSION,
             'laravel_version' => $this->app->version(),
             'occurred_at' => now()->toIso8601String(),

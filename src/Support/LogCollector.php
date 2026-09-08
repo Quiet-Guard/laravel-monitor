@@ -6,6 +6,7 @@ use Illuminate\Contracts\Bus\Dispatcher;
 use Illuminate\Contracts\Foundation\Application;
 use QuietGuard\LaravelMonitor\Http\Transport;
 use QuietGuard\LaravelMonitor\Jobs\SendLogsToMonitor;
+use QuietGuard\Monitor\Support\Cut;
 
 class LogCollector
 {
@@ -49,8 +50,23 @@ class LogCollector
             return;
         }
 
+        // Un message vide est refusé par le serveur (required), et un message
+        // trop long l'est aussi (max:8192). Dans les deux cas la validation
+        // échoue pour le LOT ENTIER : une seule ligne mal formée faisait perdre
+        // les deux cents autres, sans que personne ne l'apprenne.
+        $message = Cut::to($message, 8192) ?? '';
+
+        if (trim($message) === '') {
+            $message = '(empty log message)';
+        }
+
+        // Le serveur plafonne un lot à 500. Une configuration au-dessus était
+        // acceptée ici et rejetée là-bas à chaque envoi, donc rien ne partait
+        // jamais.
+        $maxBatch = min(500, max(1, (int) ($this->config['max_batch'] ?? 200)));
+
         // At capacity, flush what we have instead of silently dropping entries.
-        if (count($this->entries) >= (int) ($this->config['max_batch'] ?? 200)) {
+        if (count($this->entries) >= $maxBatch) {
             $this->flush();
         }
 

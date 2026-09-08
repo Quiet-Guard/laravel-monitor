@@ -14,7 +14,8 @@ class BackupCommand extends Command
     protected $signature = 'monitor:backup
         {--database : Back up the default database connection}
         {--path= : Back up a file or directory}
-        {--name= : Optional label for the backup (printable ASCII, no slashes, up to 255 characters)}';
+        {--name= : Optional label for the backup (printable ASCII, no slashes, up to 255 characters)}
+        {--keep= : After a successful upload, keep only the N newest backups OF THE SAME TYPE and delete the rest}';
 
     protected $description = 'Create an encrypted backup (database dump or folder) and upload it to the zero-knowledge vault';
 
@@ -75,6 +76,8 @@ class BackupCommand extends Command
 
         if (is_array($result)) {
             $this->info(sprintf('Backup uploaded (%s, %s).', $result['id'] ?? '?', $type));
+
+            $this->rotate($transport, $type);
 
             return self::SUCCESS;
         }
@@ -214,5 +217,76 @@ class BackupCommand extends Command
     private function tempFile(string $ext): string
     {
         return rtrim(sys_get_temp_dir(), '/').'/monitor-backup-'.bin2hex(random_bytes(8)).'.'.$ext;
+    }
+
+    /**
+     * Keep the N newest of this type, delete the rest.
+     *
+     * The documentation recommends a nightly schedule and nothing ever removed
+     * anything: monitor:prune sweeps eight categories on the server and backups
+     * are not one of them. So the recommended setup filled the plan's allowance
+     * and then failed every night, from the scheduler, where nobody is reading.
+     *
+     * Three decisions worth keeping:
+     *
+     * Only after a SUCCESSFUL upload. Deleting first would trade a full vault
+     * for an empty one on the night the dump fails.
+     *
+     * Only the same TYPE. A nightly --database rotation has no business
+     * deleting the folder backup somebody took by hand, and "the N newest" over
+     * a mixed vault would do exactly that.
+     *
+     * A failed delete does not fail the command. The backup is uploaded and
+     * safe; the vault is merely fuller than asked. Saying so is right, exiting
+     * non-zero would tell a scheduler the backup did not happen.
+     */
+    private function rotate(Transport $transport, string $type): void
+    {
+        $keep = $this->option('keep');
+
+        if ($keep === null) {
+            return;
+        }
+
+        $keep = (int) $keep;
+
+        if ($keep < 1) {
+            $this->warn('--keep must be at least 1; nothing was deleted.');
+
+            return;
+        }
+
+        $backups = $transport->listBackups();
+
+        if ($backups === null) {
+            $this->warn('Backup kept, but the vault could not be listed to rotate it: '.($transport->lastError() ?? 'unknown error'));
+
+            return;
+        }
+
+        // The server returns them newest first; keep that order rather than
+        // re-sorting on a date format the client would have to parse.
+        $sameType = array_values(array_filter($backups, static fn (array $b): bool => ($b['type'] ?? null) === $type));
+        $stale = array_slice($sameType, $keep);
+
+        if ($stale === []) {
+            return;
+        }
+
+        $deleted = 0;
+
+        foreach ($stale as $backup) {
+            if ($transport->deleteBackup((string) ($backup['id'] ?? ''))) {
+                $deleted++;
+
+                continue;
+            }
+
+            $this->warn('Could not delete '.($backup['id'] ?? '?').': '.($transport->lastError() ?? 'unknown error'));
+        }
+
+        if ($deleted > 0) {
+            $this->info(sprintf('Rotated: %d older %s backup(s) deleted, %d kept.', $deleted, $type, $keep));
+        }
     }
 }

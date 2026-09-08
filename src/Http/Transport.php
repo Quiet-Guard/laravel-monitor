@@ -234,6 +234,89 @@ class Transport
     }
 
     /**
+     * The backups this project already holds, newest first.
+     *
+     * The endpoint has existed since the vault shipped and no client could
+     * reach it: a customer who lost the id printed at upload had the dashboard
+     * and nothing else, from a command-line tool. It is also what makes
+     * rotation possible at all, since deleting the oldest requires knowing
+     * which ones there are.
+     *
+     * @return array<int, array<string, mixed>>|null null on any failure, never an empty list
+     */
+    public function listBackups(): ?array
+    {
+        $url = $this->baseUrl().'/api/v1/backups';
+
+        if (blank($this->url) || blank($this->key)) {
+            $this->lastError = 'MONITOR_URL or MONITOR_KEY is empty.';
+
+            return null;
+        }
+
+        try {
+            $response = Http::acceptJson()
+                ->timeout($this->timeout)
+                ->withToken($this->key)
+                ->get($url);
+
+            if ($response->successful()) {
+                $this->lastError = null;
+
+                return (array) $response->json('backups', []);
+            }
+
+            $this->lastError = $this->explain($response, $url);
+
+            return null;
+        } catch (Throwable $e) {
+            $this->lastError = "Could not reach {$url}: ".$e->getMessage();
+
+            return null;
+        }
+    }
+
+    /**
+     * Delete one backup, blob and row.
+     *
+     * The server refuses with 500 rather than 204 when the blob survives the
+     * attempt, which is the honest answer and the one rotation must respect:
+     * dropping a row whose ciphertext is still on disk would leave the customer
+     * paying for bytes nothing can name.
+     */
+    public function deleteBackup(string $id): bool
+    {
+        $url = $this->baseUrl().'/api/v1/backups/'.$id;
+
+        if (blank($this->url) || blank($this->key)) {
+            $this->lastError = 'MONITOR_URL or MONITOR_KEY is empty.';
+
+            return false;
+        }
+
+        try {
+            $response = Http::acceptJson()
+                ->timeout($this->timeout)
+                ->withToken($this->key)
+                ->delete($url);
+
+            if ($response->successful()) {
+                $this->lastError = null;
+
+                return true;
+            }
+
+            $this->lastError = $this->explain($response, $url);
+
+            return false;
+        } catch (Throwable $e) {
+            $this->lastError = "Could not reach {$url}: ".$e->getMessage();
+
+            return false;
+        }
+    }
+
+    /**
      * Download an encrypted backup blob to a local path.
      */
     public function downloadBackup(string $id, string $destPath): bool

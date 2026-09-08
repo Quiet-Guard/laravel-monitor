@@ -11,6 +11,7 @@ use Illuminate\Queue\Events\JobProcessed;
 use Illuminate\Support\ServiceProvider;
 use QuietGuard\LaravelMonitor\Console\BackupCommand;
 use QuietGuard\LaravelMonitor\Console\HeartbeatCommand;
+use QuietGuard\LaravelMonitor\Console\ListBackupsCommand;
 use QuietGuard\LaravelMonitor\Console\ReportDependenciesCommand;
 use QuietGuard\LaravelMonitor\Console\RestoreCommand;
 use QuietGuard\LaravelMonitor\Http\Transport;
@@ -91,6 +92,7 @@ class LaravelMonitorServiceProvider extends ServiceProvider
                 ReportDependenciesCommand::class,
                 HeartbeatCommand::class,
                 BackupCommand::class,
+                ListBackupsCommand::class,
                 RestoreCommand::class,
             ]);
         }

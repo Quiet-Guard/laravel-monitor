@@ -46,7 +46,21 @@ class RestoreCommand extends Command
 
         if (! $transport->downloadBackup($id, $blob)) {
             @unlink($blob);
-            $this->error('Failed to download the backup (check the id and your credentials).');
+            $this->error($transport->lastError() !== null
+                ? 'Failed to download the backup: '.$transport->lastError()
+                : 'Failed to download the backup (check the id and your credentials).');
+
+            return self::FAILURE;
+        }
+
+        // Le serveur publie le sha256 de chaque blob et personne ne le
+        // comparait. Un octet perdu en route donnait « Decryption failed »,
+        // c'est à dire le message qu'on obtient aussi avec une mauvaise phrase
+        // de passe : le client ne pouvait pas distinguer « votre secret est
+        // faux » de « le transfert est abîmé », et les deux ne se réparent pas
+        // du tout de la même façon.
+        if (! $this->checksumMatches($transport, $id, $blob)) {
+            @unlink($blob);
 
             return self::FAILURE;
         }
@@ -66,5 +80,48 @@ class RestoreCommand extends Command
         $this->info("Backup restored to {$output}.");
 
         return self::SUCCESS;
+    }
+
+    /**
+     * Le blob téléchargé est-il celui que le serveur dit avoir.
+     *
+     * Vrai aussi quand le serveur ne publie pas de somme, ou quand la liste est
+     * hors d'atteinte : la restauration doit rester possible quand la
+     * vérification, elle, ne l'est pas. Ce contrôle protège d'un transfert
+     * abîmé, il n'est pas une autorisation.
+     */
+    private function checksumMatches(Transport $transport, string $id, string $blob): bool
+    {
+        $backups = $transport->listBackups();
+
+        if ($backups === null) {
+            return true;
+        }
+
+        $expected = null;
+
+        foreach ($backups as $backup) {
+            if (($backup['id'] ?? null) === $id) {
+                $expected = $backup['checksum'] ?? null;
+                break;
+            }
+        }
+
+        if (! is_string($expected) || $expected === '') {
+            return true;
+        }
+
+        $actual = hash_file('sha256', $blob);
+
+        if (hash_equals($expected, (string) $actual)) {
+            return true;
+        }
+
+        $this->error(
+            'The downloaded backup does not match the checksum the server holds for it. '.
+            'Nothing was decrypted; try the download again.'
+        );
+
+        return false;
     }
 }

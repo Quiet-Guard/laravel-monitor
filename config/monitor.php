@@ -25,7 +25,13 @@ return [
     // acceptée et normalisée (Transport::baseUrl) : c'est l'erreur qu'on fait
     // en lisant « l'URL de l'API » dans la documentation, elle est donc rendue
     // impossible plutôt que documentée.
-    'url' => env('MONITOR_URL', 'https://quietguard.dev'),
+    // Laissée vide, elle vaut le service hébergé : le défaut est appliqué par
+    // le client, pas par ce fichier. Ce fichier est une COPIE, figée à la
+    // version où vous l'avez publié, et il gagne sur les défauts du paquet ;
+    // un défaut écrit ici seulement n'atteindrait donc aucune installation
+    // existante. Ne mettez pas de chemin : le client ajoute /api/v1 lui-même,
+    // et retire celui que vous auriez laissé.
+    'url' => env('MONITOR_URL'),
 
     'key' => env('MONITOR_KEY'),
 

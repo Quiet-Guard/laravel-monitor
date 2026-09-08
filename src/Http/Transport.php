@@ -5,6 +5,7 @@ namespace QuietGuard\LaravelMonitor\Http;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
 use Psr\Log\LoggerInterface;
+use QuietGuard\Monitor\Config;
 use QuietGuard\Monitor\Support\Cut;
 use QuietGuard\Monitor\Support\ValueRedactor;
 use Throwable;
@@ -117,7 +118,7 @@ class Transport
     {
         $url = $this->baseUrl().'/api/v1/encryption-key';
 
-        if (blank($this->url) || blank($this->key)) {
+        if (! $this->isConfigured()) {
             $this->lastError = 'MONITOR_URL or MONITOR_KEY is empty.';
 
             return null;
@@ -176,11 +177,30 @@ class Transport
      * has ever produced, and the trade is worth it: the shape a reasonable
      * person supplies has to work.
      */
+    /**
+     * L'adresse de base, normalisée par le coeur.
+     *
+     * La règle vit dans QuietGuard\Monitor\Config et nulle part ailleurs :
+     * une adresse vide vaut le service hébergé, un préfixe d'API fourni par
+     * l'appelant est retiré. Écrite ici en second, elle aurait divergé de la
+     * version du coeur au premier changement, ce qui est exactement ce que le
+     * commentaire de Cut décrit.
+     */
+    /**
+     * La clé est la seule chose que nous ne pouvons pas deviner.
+     *
+     * L'adresse en est une, depuis que le coeur la remplit. Exiger les deux
+     * refusait une installation à laquelle il ne manquait rien
+     * d'irremplaçable, sous un message qui accusait la clé.
+     */
+    private function isConfigured(): bool
+    {
+        return filled($this->key);
+    }
+
     private function baseUrl(): string
     {
-        $url = rtrim(trim((string) $this->url), '/');
-
-        return (string) preg_replace('#/api(/v\d+)?$#i', '', $url);
+        return Config::normaliseUrl($this->url);
     }
 
     /**
@@ -208,7 +228,7 @@ class Transport
      */
     public function uploadBackup(string $type, ?string $name, string $filePath): ?array
     {
-        if (blank($this->url) || blank($this->key)) {
+        if (! $this->isConfigured()) {
             return null;
         }
 
@@ -272,7 +292,7 @@ class Transport
     {
         $url = $this->baseUrl().'/api/v1/backups';
 
-        if (blank($this->url) || blank($this->key)) {
+        if (! $this->isConfigured()) {
             $this->lastError = 'MONITOR_URL or MONITOR_KEY is empty.';
 
             return null;
@@ -312,7 +332,7 @@ class Transport
     {
         $url = $this->baseUrl().'/api/v1/backups/'.$id;
 
-        if (blank($this->url) || blank($this->key)) {
+        if (! $this->isConfigured()) {
             $this->lastError = 'MONITOR_URL or MONITOR_KEY is empty.';
 
             return false;
@@ -345,7 +365,7 @@ class Transport
      */
     public function downloadBackup(string $id, string $destPath): bool
     {
-        if (blank($this->url) || blank($this->key)) {
+        if (! $this->isConfigured()) {
             return false;
         }
 
@@ -375,7 +395,7 @@ class Transport
     {
         $url = $this->baseUrl().$path;
 
-        if (blank($this->url) || blank($this->key)) {
+        if (! $this->isConfigured()) {
             $this->lastError = 'MONITOR_URL or MONITOR_KEY is empty.';
 
             return false;

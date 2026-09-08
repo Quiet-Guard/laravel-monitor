@@ -5,6 +5,7 @@ namespace QuietGuard\LaravelMonitor\Http;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
 use Psr\Log\LoggerInterface;
+use QuietGuard\Monitor\Support\Cut;
 use QuietGuard\Monitor\Support\ValueRedactor;
 use Throwable;
 
@@ -51,7 +52,13 @@ class Transport
      */
     public function redact(array $payload): array
     {
-        return $this->redactor?->redactAll($payload) ?? $payload;
+        // La borne vient APRÈS le masquage, et c'est l'ordre qui compte :
+        // masquer REMPLACE une valeur par une étiquette plus longue, donc une
+        // charge coupée avant pouvait repasser au-dessus de la limite du
+        // serveur et se faire refuser par le même 422 silencieux que la
+        // troncature existe pour empêcher. Un message de numéros coupé à 8192
+        // en ressortait à plus de douze mille.
+        return Cut::payload($this->redactor?->redactAll($payload) ?? $payload);
     }
 
     /**

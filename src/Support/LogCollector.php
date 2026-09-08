@@ -98,7 +98,10 @@ class LogCollector
             $queue = $this->config['queue'] ?? false;
 
             if ($queue !== false) {
-                $job = new SendLogsToMonitor($batch);
+                // Masqué avant la file, comme pour les exceptions : un contexte
+                // de log porte les mêmes formes (adresse, IBAN, carte) et la
+                // table jobs du client n'est pas un endroit où les laisser.
+                $job = new SendLogsToMonitor($this->transport->redact(['logs' => $batch])['logs'] ?? $batch);
 
                 if (is_string($queue)) {
                     $job->onConnection($queue);

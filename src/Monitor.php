@@ -32,9 +32,13 @@ class Monitor
                 return;
             }
 
-            $payload = $this->builder->build($e);
+            // Masqué AVANT toute mise en file : sinon la charge brute est
+            // sérialisée dans la table jobs du client, et définitivement dans
+            // failed_jobs. Transport le refait au moment de l'envoi, ce qui ne
+            // coûte rien sur une charge déjà masquée et garde sa garantie.
+            $payload = $this->transport->redact($this->builder->build($e));
 
-            $queue = $this->config['queue'] ?? false;
+            $queue = $this->resolveQueue();
 
             if ($queue !== false) {
                 $job = new SendExceptionToMonitor($payload);
@@ -109,5 +113,41 @@ class Monitor
         } catch (Throwable) {
             return false;
         }
+    }
+
+    /**
+     * La valeur de MONITOR_QUEUE, ou false si elle ne désigne rien.
+     *
+     * C'est une CONNEXION de file, pas un nom de file, et le nom de la variable
+     * laisse croire l'inverse : MONITOR_QUEUE=default, ou =monitoring, ou =high
+     * sont les valeurs qu'on écrit naturellement. Aucune n'est une clé de
+     * queue.connections, donc Queue::connection() levait, et le catch de
+     * report() avalait l'exception : le SDK s'arrêtait entièrement de rapporter,
+     * pour toujours, sans un mot nulle part.
+     *
+     * Retomber en synchrone plutôt que de ne rien faire : un rapport qui part
+     * en bloquant la requête vaut mieux qu'un rapport qui ne part jamais, et le
+     * warning dit quoi écrire à la place.
+     */
+    private function resolveQueue(): string|bool
+    {
+        $queue = $this->config['queue'] ?? false;
+
+        if (! is_string($queue)) {
+            return $queue !== false;
+        }
+
+        $connections = array_keys((array) $this->app['config']->get('queue.connections', []));
+
+        if (in_array($queue, $connections, true)) {
+            return $queue;
+        }
+
+        $this->app['log']->warning(
+            "Quiet Guard: MONITOR_QUEUE names no queue CONNECTION ({$queue}); reporting synchronously instead.",
+            ['available' => $connections, Transport::INTERNAL => true],
+        );
+
+        return false;
     }
 }

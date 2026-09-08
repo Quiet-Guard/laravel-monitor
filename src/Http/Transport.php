@@ -32,7 +32,24 @@ class Transport
      * @param  array<mixed>  $payload
      * @return array<mixed>
      */
-    private function redacted(array $payload): array
+    /**
+     * Masque les valeurs par leur FORME, où qu'elles soient.
+     *
+     * Publique, parce qu'il faut pouvoir l'appeler AVANT que la charge puisse
+     * être sérialisée quelque part. Le masquage se faisait ici seulement, donc
+     * sur le fil : avec MONITOR_QUEUE actif, les adresses e-mail, les IBAN et
+     * les numéros de carte que ce redacteur existe pour arrêter atterrissaient
+     * en clair dans la table jobs du client, et définitivement dans
+     * failed_jobs, à l'intérieur de sa propre base et de ses sauvegardes.
+     *
+     * Appelé deux fois, il ne fait rien la seconde : « [redacted:email] » ne
+     * contient plus d'adresse. La garantie que porte le commentaire de $redactor,
+     * « tout ce qui atteint le fil est passé par là », reste donc entière.
+     *
+     * @param  array<string, mixed>  $payload
+     * @return array<string, mixed>
+     */
+    public function redact(array $payload): array
     {
         return $this->redactor?->redactAll($payload) ?? $payload;
     }
@@ -44,7 +61,7 @@ class Transport
      */
     public function send(array $payload): bool
     {
-        return $this->post('/api/v1/ingest', $this->redacted($payload), 'exception');
+        return $this->post('/api/v1/ingest', $this->redact($payload), 'exception');
     }
 
     /**
@@ -58,7 +75,7 @@ class Transport
             return true;
         }
 
-        return $this->post('/api/v1/logs', $this->redacted(['logs' => $logs]), 'logs');
+        return $this->post('/api/v1/logs', $this->redact(['logs' => $logs]), 'logs');
     }
 
     /**

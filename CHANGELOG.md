@@ -2,6 +2,33 @@
 
 All notable changes to `quiet-guard/laravel-monitor`.
 
+## Unreleased
+
+### Fixed
+
+- `MONITOR_URL` is optional again, for real this time. v0.2.1 put the hosted
+  address in the **publishable config template**, and the installation page
+  tells every reader to publish that file: the copy is frozen at the version
+  they installed and wins over the package's defaults, so the default reached
+  nobody who had followed the guide, and would not have reached them after
+  `composer update` either. The address is resolved by the client now
+  (`QuietGuard\Monitor\Config::HOSTED_URL`), applied wherever the value is
+  read, and the template carries no address at all. `Transport` and the core
+  `Reporter` each held their own copy of the trailing-`/api` stripping rule;
+  both delegate to the one definition.
+- The client asks only for a key. An empty `MONITOR_URL` used to silence it
+  completely, which is not what an operator means by an empty value; use
+  `MONITOR_ENABLED=false`, which says so.
+
+### Added
+
+- `monitor:restore --file=<blob>` decrypts a backup you already downloaded from
+  the dashboard, instead of fetching its own copy. The Download button hands
+  you the sealed `.enc` blob, because that is all the server holds, and until
+  now nothing could open it. The id becomes optional; without it there is no
+  published checksum to compare against, and the command says so. Your file is
+  never deleted.
+
 ## v0.2.1
 
 ### Security

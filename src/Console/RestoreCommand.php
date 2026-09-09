@@ -10,14 +10,35 @@ use Throwable;
 class RestoreCommand extends Command
 {
     protected $signature = 'monitor:restore
-        {id : The backup id returned at upload time}
+        {id? : The backup id, shown in the dashboard and returned at upload time}
+        {--file= : Decrypt a blob you have already downloaded, instead of fetching it}
         {--output= : Where to write the decrypted backup}
         {--passphrase= : Team passphrase (prompted if omitted)}';
 
-    protected $description = 'Download an encrypted backup and decrypt it locally with the team passphrase';
+    protected $description = 'Decrypt an encrypted backup locally with the team passphrase, fetching it from the vault or reading one you downloaded';
 
     public function handle(Transport $transport, BackupCipher $cipher): int
     {
+        $id = $this->argument('id');
+        $downloaded = $this->option('file');
+
+        // Le tableau de bord propose un bouton Télécharger, et ce qu'il rend
+        // est le blob scellé : c'est tout ce que le serveur détient. Sans
+        // cette option il n'existait aucun moyen de l'ouvrir, la commande
+        // retéléchargeant toujours la sienne, si bien que le bouton livrait un
+        // fichier dont on ne pouvait rien faire.
+        if ($id === null && $downloaded === null) {
+            $this->error('Give a backup id, or --file=<blob> to decrypt one you already downloaded.');
+
+            return self::FAILURE;
+        }
+
+        if ($downloaded !== null && ! is_readable($downloaded)) {
+            $this->error("Cannot read {$downloaded}.");
+
+            return self::FAILURE;
+        }
+
         $key = $transport->getEncryptionKey();
 
         if (! is_array($key) || blank($key['public_key'] ?? null) || blank($key['private_key_wrapped'] ?? null)) {
@@ -41,16 +62,21 @@ class RestoreCommand extends Command
             return self::FAILURE;
         }
 
-        $id = $this->argument('id');
-        $blob = rtrim(sys_get_temp_dir(), '/').'/monitor-restore-'.bin2hex(random_bytes(8)).'.enc';
+        // Le fichier de l'appelant n'est jamais le nôtre : on ne le supprime pas.
+        $blob = $downloaded;
+        $temporary = null;
 
-        if (! $transport->downloadBackup($id, $blob)) {
-            @unlink($blob);
-            $this->error($transport->lastError() !== null
-                ? 'Failed to download the backup: '.$transport->lastError()
-                : 'Failed to download the backup (check the id and your credentials).');
+        if ($blob === null) {
+            $blob = $temporary = rtrim(sys_get_temp_dir(), '/').'/monitor-restore-'.bin2hex(random_bytes(8)).'.enc';
 
-            return self::FAILURE;
+            if (! $transport->downloadBackup($id, $blob)) {
+                @unlink($blob);
+                $this->error($transport->lastError() !== null
+                    ? 'Failed to download the backup: '.$transport->lastError()
+                    : 'Failed to download the backup (check the id and your credentials).');
+
+                return self::FAILURE;
+            }
         }
 
         // Le serveur publie le sha256 de chaque blob et personne ne le
@@ -59,13 +85,23 @@ class RestoreCommand extends Command
         // de passe : le client ne pouvait pas distinguer « votre secret est
         // faux » de « le transfert est abîmé », et les deux ne se réparent pas
         // du tout de la même façon.
-        if (! $this->checksumMatches($transport, $id, $blob)) {
-            @unlink($blob);
+        // Sans identifiant il n'y a rien à qui demander la somme attendue :
+        // la vérification est alors absente, et la commande le dit plutôt que
+        // de laisser croire qu'elle a eu lieu.
+        if ($id !== null && ! $this->checksumMatches($transport, $id, $blob)) {
+            if ($temporary !== null) {
+                @unlink($temporary);
+            }
 
             return self::FAILURE;
         }
 
-        $output = $this->option('output') ?: base_path("restored-{$id}.out");
+        if ($id === null) {
+            $this->warn('No id given, so the archive was not checked against the checksum the server publishes.');
+        }
+
+        $output = $this->option('output')
+            ?: base_path('restored-'.($id ?? pathinfo((string) $downloaded, PATHINFO_FILENAME)).'.out');
 
         try {
             $cipher->decryptFile($blob, $output, $key['public_key'], $secret);
@@ -74,7 +110,9 @@ class RestoreCommand extends Command
 
             return self::FAILURE;
         } finally {
-            @unlink($blob);
+            if ($temporary !== null) {
+                @unlink($temporary);
+            }
         }
 
         $this->info("Backup restored to {$output}.");

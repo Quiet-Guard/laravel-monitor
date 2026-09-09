@@ -2,7 +2,7 @@
 
 All notable changes to `quiet-guard/laravel-monitor`.
 
-## Unreleased
+## v0.2.2
 
 ### Fixed
 

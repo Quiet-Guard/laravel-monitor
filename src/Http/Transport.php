@@ -119,7 +119,7 @@ class Transport
         $url = $this->baseUrl().'/api/v1/encryption-key';
 
         if (! $this->isConfigured()) {
-            $this->lastError = 'MONITOR_URL or MONITOR_KEY is empty.';
+            $this->lastError = 'MONITOR_KEY is empty.';
 
             return null;
         }
@@ -163,41 +163,32 @@ class Transport
     private ?string $lastError = null;
 
     /**
-     * The server root, with the API prefix removed if the customer supplied it.
-     *
-     * Every method below appends /api/v1/... itself, so a base URL that already
-     * ends in /api/v1 produces /api/v1/api/v1/... and answers 404 on every
-     * call. That is not a hypothetical: "the base URL of your Quiet Guard
-     * server" and "the ingestion endpoint" are read as the same thing, the
-     * dashboard shows the API address, and the failure that follows is silent
-     * and looks like a bad key. It cost a real installation an evening.
-     *
-     * Trailing /api and /api/vN are both stripped, once. A self-hosted instance
-     * genuinely served from a path ending in /api is not something this system
-     * has ever produced, and the trade is worth it: the shape a reasonable
-     * person supplies has to work.
-     */
-    /**
-     * L'adresse de base, normalisée par le coeur.
-     *
-     * La règle vit dans QuietGuard\Monitor\Config et nulle part ailleurs :
-     * une adresse vide vaut le service hébergé, un préfixe d'API fourni par
-     * l'appelant est retiré. Écrite ici en second, elle aurait divergé de la
-     * version du coeur au premier changement, ce qui est exactement ce que le
-     * commentaire de Cut décrit.
-     */
-    /**
      * La clé est la seule chose que nous ne pouvons pas deviner.
      *
-     * L'adresse en est une, depuis que le coeur la remplit. Exiger les deux
-     * refusait une installation à laquelle il ne manquait rien
-     * d'irremplaçable, sous un message qui accusait la clé.
+     * L'adresse en est une, depuis que le coeur la remplit avec le service
+     * hébergé. Exiger les deux refusait une installation à laquelle il ne
+     * manquait rien d'irremplaçable, sous un message qui accusait la clé.
      */
     private function isConfigured(): bool
     {
         return filled($this->key);
     }
 
+    /**
+     * La racine du serveur, normalisée par le coeur et par lui seul.
+     *
+     * Chaque méthode ci-dessous ajoute son propre /api/v1/..., donc une adresse
+     * qui finit déjà par /api/v1 produit /api/v1/api/v1/... et répond 404 à
+     * tout. Ce n'est pas une hypothèse : « l'URL de base de votre serveur » et
+     * « le point d'entrée d'ingestion » se lisent comme la même chose, le
+     * dashboard affiche l'adresse de l'API, et l'échec qui suit est silencieux
+     * et ressemble à une mauvaise clé. Il a coûté une soirée à une vraie
+     * installation.
+     *
+     * La règle vit dans QuietGuard\Monitor\Config et nulle part ailleurs.
+     * Écrite ici en second, elle aurait divergé de celle du coeur au premier
+     * changement, ce qui est exactement ce que le commentaire de Cut décrit.
+     */
     private function baseUrl(): string
     {
         return Config::normaliseUrl($this->url);
@@ -293,7 +284,7 @@ class Transport
         $url = $this->baseUrl().'/api/v1/backups';
 
         if (! $this->isConfigured()) {
-            $this->lastError = 'MONITOR_URL or MONITOR_KEY is empty.';
+            $this->lastError = 'MONITOR_KEY is empty.';
 
             return null;
         }
@@ -333,7 +324,7 @@ class Transport
         $url = $this->baseUrl().'/api/v1/backups/'.$id;
 
         if (! $this->isConfigured()) {
-            $this->lastError = 'MONITOR_URL or MONITOR_KEY is empty.';
+            $this->lastError = 'MONITOR_KEY is empty.';
 
             return false;
         }
@@ -396,7 +387,7 @@ class Transport
         $url = $this->baseUrl().$path;
 
         if (! $this->isConfigured()) {
-            $this->lastError = 'MONITOR_URL or MONITOR_KEY is empty.';
+            $this->lastError = 'MONITOR_KEY is empty.';
 
             return false;
         }

@@ -34,10 +34,11 @@ MONITOR_KEY=lm_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 # Optional
 MONITOR_URL=https://monitor.example.com   # defaults to the hosted service, https://quietguard.dev
 MONITOR_ENVIRONMENTS=production,staging
-MONITOR_RELEASE=${GIT_SHA}
+MONITOR_RELEASE=            # empty: detected from a REVISION file or .git/HEAD (MONITOR_RELEASE_AUTO=false to disable)
 MONITOR_QUEUE=false        # false: synchronous. true: the app's default queue connection. A queue CONNECTION name: that connection.
 MONITOR_TIMEOUT=3
-MONITOR_TRACE_LIMIT=0      # 0 = full stack trace (default); a positive value trims
+MONITOR_TRACE_LIMIT=0      # 0 = full stack trace (default); a positive value trims; the throw site counts as one frame
+MONITOR_CODE_SNIPPETS=true # a few lines of your own code around each application frame; false sends file and line only
 
 # Application logs (opt-in)
 MONITOR_LOGS_ENABLED=true

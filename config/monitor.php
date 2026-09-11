@@ -63,9 +63,19 @@ return [
     | Release
     |--------------------------------------------------------------------------
     | An identifier for the deployed version (e.g. a git SHA or tag). Helps
-    | attribute issues to a specific deploy.
+    | attribute issues to a specific deploy, and a full commit SHA is what the
+    | server links to a synced GitHub commit.
+    |
+    | Leave it empty and the SDK finds it by itself: a REVISION file at the
+    | application root (Capistrano, Deployer and most deploy scripts write one),
+    | else the checkout's own .git/HEAD. Set MONITOR_RELEASE to override, or
+    | MONITOR_RELEASE_AUTO=false to send only what you configured, for instance
+    | when the checkout on the server is not the branch that actually runs.
+    | Detection reads the files once per process, never on every exception.
     */
     'release' => env('MONITOR_RELEASE'),
+
+    'release_auto' => (bool) env('MONITOR_RELEASE_AUTO', true),
 
     /*
     |--------------------------------------------------------------------------
@@ -85,6 +95,18 @@ return [
     |--------------------------------------------------------------------------
     */
     'trace_limit' => (int) env('MONITOR_TRACE_LIMIT', 0), // 0 = full stack trace (recommended); set a frame count to trim payloads
+
+    /*
+    |--------------------------------------------------------------------------
+    | Source snippets
+    |--------------------------------------------------------------------------
+    | A few lines of your own code around each application frame (never a
+    | dependency's), so the dashboard shows the failing line in context the
+    | way Laravel's exception page does. Set it to false and only file and
+    | line travel. Sealed at rest with the rest of the trace when the team's
+    | encryption is on.
+    */
+    'code_snippets' => (bool) env('MONITOR_CODE_SNIPPETS', true),
 
     /*
     |--------------------------------------------------------------------------

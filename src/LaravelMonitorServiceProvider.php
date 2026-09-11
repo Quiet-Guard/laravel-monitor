@@ -17,6 +17,7 @@ use QuietGuard\LaravelMonitor\Console\RestoreCommand;
 use QuietGuard\LaravelMonitor\Http\Transport;
 use QuietGuard\LaravelMonitor\Support\LogCollector;
 use QuietGuard\LaravelMonitor\Support\PayloadBuilder;
+use QuietGuard\LaravelMonitor\Support\ReleaseResolver;
 use QuietGuard\LaravelMonitor\Support\Scrubber;
 use QuietGuard\Monitor\Support\ValueRedactor;
 use Throwable;
@@ -38,7 +39,8 @@ class LaravelMonitorServiceProvider extends ServiceProvider
                 $app,
                 $app->make(Scrubber::class),
                 (int) ($config['trace_limit'] ?? 0),
-                $config['release'] ?? null,
+                $this->release($app, $config),
+                (bool) ($config['code_snippets'] ?? true),
             );
         });
 
@@ -74,11 +76,32 @@ class LaravelMonitorServiceProvider extends ServiceProvider
                 $app->make(Transport::class),
                 $app->make(Scrubber::class),
                 array_merge($config['logs'] ?? [], [
-                    'release' => $config['release'] ?? null,
+                    'release' => $this->release($app, $config),
                     'queue' => $config['queue'] ?? false,
                 ]),
             );
         });
+    }
+
+    /**
+     * The release the exception and log payloads carry: `MONITOR_RELEASE` when
+     * it is set, otherwise the checkout's own git commit (or a `REVISION` file),
+     * unless `release_auto` is off. One definition, so the two payloads cannot
+     * name two versions.
+     *
+     * @param  array<string, mixed>  $config
+     */
+    private function release(Application $app, array $config): ?string
+    {
+        $configured = $config['release'] ?? null;
+
+        if (! ($config['release_auto'] ?? true)) {
+            $configured = trim((string) $configured);
+
+            return $configured === '' ? null : $configured;
+        }
+
+        return ReleaseResolver::resolve($configured, $app->basePath());
     }
 
     public function boot(): void

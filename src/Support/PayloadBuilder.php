@@ -4,6 +4,7 @@ namespace QuietGuard\LaravelMonitor\Support;
 
 use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Http\Request;
+use QuietGuard\Monitor\Payload\ExceptionPayloadBuilder;
 use QuietGuard\Monitor\Support\Cut;
 use Throwable;
 
@@ -14,6 +15,7 @@ class PayloadBuilder
         private readonly Scrubber $scrubber,
         private readonly int $traceLimit = 0,
         private readonly ?string $release = null,
+        private readonly bool $codeSnippets = true,
     ) {}
 
     /**
@@ -35,27 +37,17 @@ class PayloadBuilder
     }
 
     /**
+     * The core builder's frames (the throw site first, the limit counting it,
+     * snippets on application frames), then the scrub-line rule by the same
+     * key list that masks the request: code is where a hardcoded secret lives.
+     *
      * @return array<int, array<string, mixed>>
      */
     private function trace(Throwable $e): array
     {
-        $frames = [];
-
-        $trace = $this->traceLimit > 0
-            ? array_slice($e->getTrace(), 0, $this->traceLimit)
-            : $e->getTrace();
-
-        foreach ($trace as $frame) {
-            $frames[] = [
-                'file' => $frame['file'] ?? null,
-                'line' => $frame['line'] ?? null,
-                'function' => $frame['function'] ?? null,
-                'class' => $frame['class'] ?? null,
-                'type' => $frame['type'] ?? null,
-            ];
-        }
-
-        return $frames;
+        return $this->scrubber->scrubSnippets(
+            ExceptionPayloadBuilder::frames($e, $this->traceLimit, $this->codeSnippets)
+        );
     }
 
     /**

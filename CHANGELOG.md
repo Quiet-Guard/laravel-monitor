@@ -2,6 +2,29 @@
 
 All notable changes to `quiet-guard/laravel-monitor`.
 
+## Unreleased
+
+### Added
+
+- Stack traces start at the throw site and application frames carry a source
+  snippet, the five lines on each side of the frame's line, so the dashboard
+  shows the failing line in context. `MONITOR_CODE_SNIPPETS=false` sends file
+  and line only. A line naming a key of the `scrub` list is masked whole.
+  Dependencies never carry one. Requires `quiet-guard/monitor-php` with
+  `SourceSnippet`.
+
+- The release is detected when `MONITOR_RELEASE` is empty: from a `REVISION`
+  file at the application root (what Capistrano, Deployer and most deploy
+  scripts write), else from the checkout's own `.git/HEAD`, following a branch
+  ref to its loose file or to `packed-refs`. The documentation used to say
+  `MONITOR_RELEASE=${GIT_SHA}` and nothing about where that value comes from,
+  so most installations sent no release at all and the *error to commit* link
+  in the dashboard never lit up. `MONITOR_RELEASE` still wins when set;
+  `MONITOR_RELEASE_AUTO=false` sends only the configured value, for a server
+  whose checkout is not the branch that runs. The files are read once per
+  process. The configuration page now carries one recipe per deployment shape
+  (Forge, Envoyer, GitHub Actions, Docker, plain `git pull`).
+
 ## v0.2.2
 
 ### Fixed

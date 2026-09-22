@@ -2,6 +2,49 @@
 
 All notable changes to `quiet-guard/laravel-monitor`.
 
+## v0.3.1
+
+### Security
+
+- The password of an HTTP Basic request travelled in clear. The request names
+  its headers lower-cased with hyphens, so it sat under `php-auth-pw` while the
+  `scrub` list writes `php_auth_pw`, and a name only matched as written. A
+  hyphen counts as an underscore now, which also catches `x-api-key` under
+  `api_key`.
+- A password reset token travelled in the reported URL. `context.url` was set
+  outside the scrubber, so the token and the signature in the query of
+  Filament's reset link, and the token in the path of Laravel's own
+  (`/reset-password/{token}`, the one Breeze, Fortify and Jetstream send),
+  reached the server in clear. The URL goes through `Scrubber::scrubUrl()`
+  now: the query values the `scrub` list names become `%5Bscrubbed%5D`, and so
+  does every path segment made of forty letters or digits in a row.
+  `signature`, the parameter that authorises a URL Laravel signed
+  (`URL::signedRoute`), joins the default `scrub` list.
+- A Livewire request was not opened. `components.*.snapshot` is a JSON string,
+  and a scrubber that only descends into arrays handed it over whole, the
+  state of the component and a password typed into it included. JSON written
+  as a string is decoded, masked by key and written back now.
+
+### Fixed
+
+- An empty `MONITOR_URL` silenced the client. v0.2.2 resolved an empty address
+  to the hosted service and said so, but the two gates in front of the
+  transport, the exception reporter and the log hook, still required a URL: an
+  installation that left it empty, as the configuration invites, sent no
+  exception and no log at all, and said nothing. Both gates ask for the key
+  alone now.
+- A snippet line that calls a static method (`Auth::user()`) is no longer
+  masked whole. The first colon of `::` read as the start of a value, so such
+  lines went, the line of the throw included. A hardcoded
+  `'php-auth-pw' => '...'` line is masked, each `scrub` name being tried in
+  both spellings.
+
+### Changed
+
+- A machine that has a key and no `MONITOR_URL`, a staging box for instance,
+  now reports to the hosted service. To keep it quiet, leave its
+  `MONITOR_KEY` empty or set `MONITOR_ENABLED=false`.
+
 ## v0.3.0
 
 ### Added

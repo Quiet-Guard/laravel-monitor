@@ -159,11 +159,11 @@ return [
     */
     'redact_custom' => [],
 
-    // Quiet Guard masks the names of this default list again when a report
-    // arrives, with a list of its own. Removing a name from your copy lets
-    // its value leave your application, but it is masked on arrival all the
-    // same, before anything is stored. A name you add is masked by your
-    // client alone.
+    // Quiet Guard masks the request context of an exception report again
+    // when it arrives, with a list of its own: a name of this default list
+    // that you remove from your copy is still masked there, before anything
+    // is stored. Log contexts and the lines of a code snippet are masked by
+    // this list alone, on your side, and so is any name you add.
     'scrub' => [
         'password',
         'password_confirmation',

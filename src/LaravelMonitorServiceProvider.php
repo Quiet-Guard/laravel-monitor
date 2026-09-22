@@ -187,7 +187,9 @@ class LaravelMonitorServiceProvider extends ServiceProvider
             return;
         }
 
-        if (blank($config['url'] ?? null) || blank($config['key'] ?? null)) {
+        // The key alone: an empty MONITOR_URL is a configured client that
+        // takes the hosted address (Config::normaliseUrl), not an absent one.
+        if (blank($config['key'] ?? null)) {
             return;
         }
 

@@ -69,7 +69,9 @@ class Monitor
             return false;
         }
 
-        if (blank($this->config['url'] ?? null) || blank($this->config['key'] ?? null)) {
+        // The key alone: an empty MONITOR_URL is a configured client that
+        // takes the hosted address (Config::normaliseUrl), not an absent one.
+        if (blank($this->config['key'] ?? null)) {
             return false;
         }
 

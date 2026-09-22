@@ -17,20 +17,11 @@ return [
     | The base URL of your Quiet Guard server and the per-project API key
     | generated in its dashboard.
     */
-    // Le service hébergé est le cas normal, donc il est le défaut : un client
-    // qui installe le paquet n'a que sa clé à coller. Écrasable par
-    // MONITOR_URL pour une instance auto-hébergée.
-    //
-    // Le SDK ajoute /api/v1 lui-même. Une valeur qui le contient déjà est
-    // acceptée et normalisée (Transport::baseUrl) : c'est l'erreur qu'on fait
-    // en lisant « l'URL de l'API » dans la documentation, elle est donc rendue
-    // impossible plutôt que documentée.
-    // Laissée vide, elle vaut le service hébergé : le défaut est appliqué par
-    // le client, pas par ce fichier. Ce fichier est une COPIE, figée à la
-    // version où vous l'avez publié, et il gagne sur les défauts du paquet ;
-    // un défaut écrit ici seulement n'atteindrait donc aucune installation
-    // existante. Ne mettez pas de chemin : le client ajoute /api/v1 lui-même,
-    // et retire celui que vous auriez laissé.
+    // Empty means the hosted service. That default is applied by the client,
+    // not by this file, which is a copy frozen at the version you published
+    // it from. Set MONITOR_URL only for a self-hosted instance, without a
+    // path: the client adds /api/v1 itself and strips a trailing /api or
+    // /api/vN.
     'url' => env('MONITOR_URL'),
 
     'key' => env('MONITOR_KEY'),
@@ -165,11 +156,15 @@ return [
     | one of these names a value, or one of a few words of the SDK's own
     | (key, auth, bearer...), is replaced whole by [scrubbed].
     */
-    // Quiet Guard masks the request context of an exception report again
-    // when it arrives, with a list of its own: a name of this default list
-    // that you remove from your copy is still masked there, before anything
-    // is stored. Log contexts and the lines of a code snippet are masked by
-    // this list alone, on your side, and so is any name you add.
+    // Removing a name from your copy lets its value leave the application,
+    // and with MONITOR_QUEUE it is first written to your jobs table (and to
+    // failed_jobs if the send fails), since reports are masked before they
+    // are queued. Quiet Guard masks the request context of an exception
+    // report again when it arrives, with a list of its own: a secret of this
+    // default list is masked there before anything is stored, but not the
+    // visitor IP headers below, which are yours to keep or mask. Log
+    // contexts and the lines of a code snippet are masked by this list
+    // alone, on your side, and so is any name you add.
     'scrub' => [
         'password',
         'password_confirmation',

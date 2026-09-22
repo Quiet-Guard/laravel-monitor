@@ -24,6 +24,10 @@ All notable changes to `quiet-guard/laravel-monitor`.
   and a scrubber that only descends into arrays handed it over whole, the
   state of the component and a password typed into it included. JSON written
   as a string is decoded, masked by key and written back now.
+- A secret hardcoded into an array travelled in a snippet: in
+  `$config['password'] = '...'` a `']` stood between the name and the `=`, and
+  the line rule did not read it. Such a line is masked whole now, and so is a
+  comparison with such an index.
 
 ### Fixed
 
@@ -36,8 +40,8 @@ All notable changes to `quiet-guard/laravel-monitor`.
 - A snippet line that calls a static method (`Auth::user()`) is no longer
   masked whole. The first colon of `::` read as the start of a value, so such
   lines went, the line of the throw included. A hardcoded
-  `'php-auth-pw' => '...'` line is masked, each `scrub` name being tried in
-  both spellings.
+  `'php-auth-pw' => '...'` line is masked, a `scrub` name with a hyphen or an
+  underscore inside it being tried in both spellings.
 
 ### Changed
 

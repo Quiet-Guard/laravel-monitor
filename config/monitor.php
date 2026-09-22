@@ -159,6 +159,11 @@ return [
     */
     'redact_custom' => [],
 
+    // The Quiet Guard server masks the names of this default list again when
+    // a report arrives, from its own copy (IngestedContext::KEYS), so an
+    // application still running a client from before a name joined the list
+    // is covered too. The two lists are kept in step with each other; a name
+    // you add to your own copy is masked by your client alone.
     'scrub' => [
         'password',
         'password_confirmation',

@@ -123,18 +123,6 @@ return [
     ],
 
     /*
-    |--------------------------------------------------------------------------
-    | Scrubbed keys
-    |--------------------------------------------------------------------------
-    | Names whose values are masked before leaving the app, matched by
-    | case-insensitive substring: a key of the request or the context, a key
-    | inside a value that is itself JSON (a Livewire snapshot), and a
-    | parameter of a URL's query string, the reported URL included. The path
-    | of a URL is not: list a route whose path is itself a secret under
-    | ignore_paths. A line of a source snippet that gives one of these names a
-    | value goes whole.
-    */
-    /*
     | Value masking, by shape rather than by field name.
     |
     | 'scrub' below hides a value because of what its field is CALLED. It never
@@ -159,6 +147,24 @@ return [
     */
     'redact_custom' => [],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Scrubbed keys
+    |--------------------------------------------------------------------------
+    | Names whose values are masked before leaving the app, matched by
+    | case-insensitive substring, a hyphen counting as an underscore
+    | (php_auth_pw masks the php-auth-pw header): a key of the request or the
+    | context, a key inside a value that is itself JSON (a Livewire snapshot),
+    | and a parameter of a URL's query string, the reported URL included. The
+    | path of a URL is read too: a segment made only of letters and digits,
+    | forty or more, is masked whatever this list says, since that is where a
+    | reset link keeps its token (/reset-password/{token}); a number, a slug,
+    | a UUID or a ULID stays. A route whose path holds a secret of another
+    | shape can go under ignore_paths, which drops its exception reports
+    | whole rather than masking them. A line of a source snippet that gives
+    | one of these names a value, or one of a few words of the SDK's own
+    | (key, auth, bearer...), is replaced whole by [scrubbed].
+    */
     // Quiet Guard masks the request context of an exception report again
     // when it arrives, with a list of its own: a name of this default list
     // that you remove from your copy is still masked there, before anything

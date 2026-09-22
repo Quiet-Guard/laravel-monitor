@@ -33,10 +33,10 @@ class Monitor
                 return;
             }
 
-            // Masqué AVANT toute mise en file : sinon la charge brute est
-            // sérialisée dans la table jobs du client, et définitivement dans
-            // failed_jobs. Transport le refait au moment de l'envoi, ce qui ne
-            // coûte rien sur une charge déjà masquée et garde sa garantie.
+            // Masked BEFORE anything is queued: otherwise the raw payload is
+            // serialised into the client's jobs table, and for good into
+            // failed_jobs. Transport does it again when it sends, which costs
+            // nothing on a payload already masked and keeps its guarantee.
             $payload = $this->transport->redact($this->builder->build($e));
 
             $queue = QueueConnection::resolve($this->app, $this->config['queue'] ?? false);

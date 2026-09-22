@@ -126,7 +126,13 @@ return [
     |--------------------------------------------------------------------------
     | Scrubbed keys
     |--------------------------------------------------------------------------
-    | Request/context keys whose values are masked before leaving the app.
+    | Names whose values are masked before leaving the app, matched by
+    | case-insensitive substring: a key of the request or the context, a key
+    | inside a value that is itself JSON (a Livewire snapshot), and a
+    | parameter of a URL's query string, the reported URL included. The path
+    | of a URL is not: list a route whose path is itself a secret under
+    | ignore_paths. A line of a source snippet that gives one of these names a
+    | value goes whole.
     */
     /*
     | Value masking, by shape rather than by field name.
@@ -162,6 +168,8 @@ return [
         // 'mountedActions.0.data.passphrase' a Livewire request carries.
         'passphrase',
         'token',
+        // The parameter that authorises a URL Laravel signed (URL::signedRoute).
+        'signature',
         'secret',
         'authorization',
         'cookie',

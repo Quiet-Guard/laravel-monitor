@@ -73,7 +73,10 @@ class PayloadBuilder
         $request = $this->app->make('request');
 
         $context['source'] = 'http';
-        $context['url'] = $request->fullUrl();
+        // The URL goes through the scrubber like everything else: a password
+        // reset link carries its token and its signature in the query string,
+        // and this value used to be set outside it.
+        $context['url'] = $this->scrubber->scrubUrl($request->fullUrl());
         $context['method'] = $request->method();
         $context['request'] = $this->scrubber->scrub([
             'headers' => $this->headers($request),

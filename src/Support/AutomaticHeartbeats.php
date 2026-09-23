@@ -47,6 +47,9 @@ final class AutomaticHeartbeats
     /** How long a worker sends no queue ping at all after one failed. */
     public const PAUSE_AFTER_FAILURE_SECONDS = 60;
 
+    /** A schedule:run this close to the recorded start is that start, seen from another host. */
+    public const SCHEDULER_SAME_START_SECONDS = 30;
+
     /** Added to the observed cadence, so one missed ping is not an alert. */
     public const SCHEDULER_MIN_GRACE = 4;
 
@@ -293,6 +296,15 @@ final class AutomaticHeartbeats
             // Redis hands a stored number back as a numeric string, the array
             // and file stores as the integer: read both, refuse anything else.
             $previous = filter_var($cache->get(self::schedulerLastKey($app)), FILTER_VALIDATE_INT, FILTER_NULL_ON_FAILURE);
+
+            // Several hosts running the same cron on one cache start within
+            // seconds of each other, on clocks that may disagree by as much:
+            // the second one would read the first one's start and arm a
+            // one-minute period on a five-minute cron. It is the same start,
+            // neither recorded again nor pinged.
+            if ($previous !== null && abs($now - $previous) < self::SCHEDULER_SAME_START_SECONDS) {
+                return;
+            }
 
             $cache->put(self::schedulerLastKey($app), $now, self::SCHEDULER_LAST_TTL_SECONDS);
 

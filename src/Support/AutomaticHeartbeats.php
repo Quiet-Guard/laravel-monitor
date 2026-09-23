@@ -328,8 +328,10 @@ final class AutomaticHeartbeats
     }
 
     /**
-     * Forget this process's throttle and measures. For tests, where one
-     * process plays several workers.
+     * Forget this process's throttle, measures and pause. For tests, where
+     * one process plays several workers.
+     *
+     * @internal A test seam, not part of the SDK's public API.
      */
     public static function flushState(): void
     {
@@ -342,6 +344,9 @@ final class AutomaticHeartbeats
      * Replace how a schedule:run typed in a terminal is told from one cron
      * started; null restores the STDIN check. For tests, whose own STDIN is a
      * terminal whenever somebody runs the suite by hand.
+     *
+     * @internal A test seam, not part of the SDK's public API: it may change
+     *           or disappear in any release.
      *
      * @param  (Closure(): bool)|null  $detector
      */

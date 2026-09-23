@@ -241,11 +241,13 @@ final class AutomaticHeartbeats
 
             $cache = $app->make(Cache::class);
             $now = Carbon::now()->getTimestamp();
-            $previous = $cache->get(self::SCHEDULER_LAST_KEY);
+            // Redis hands a stored number back as a numeric string, the array
+            // and file stores as the integer: read both, refuse anything else.
+            $previous = filter_var($cache->get(self::SCHEDULER_LAST_KEY), FILTER_VALIDATE_INT, FILTER_NULL_ON_FAILURE);
 
             $cache->put(self::SCHEDULER_LAST_KEY, $now, self::SCHEDULER_LAST_TTL_SECONDS);
 
-            if (! is_int($previous)) {
+            if ($previous === null) {
                 return;
             }
 

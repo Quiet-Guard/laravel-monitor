@@ -127,9 +127,10 @@ return [
     | `scheduler`: each `schedule:run` pings a `scheduler` heartbeat as it
     | starts, maintenance mode included. The first run only records the time
     | and the second pings with the gap observed between the two, so a cron
-    | every five minutes, or hourly, is expected at that pace. The time is
-    | kept in your default cache store, which must outlive the process: on
-    | the `array` store nothing is ever sent.
+    | every five minutes, or hourly, is expected at that pace, with that gap
+    | plus four minutes of grace. A run typed in a terminal is ignored. The
+    | time is kept in your default cache store, which must outlive the
+    | process: on the `array` store nothing is ever sent.
     |
     | `queues`: every `queue:work` (Horizon included) pings one heartbeat per
     | queue it consumes, at most once a minute across the workers that share

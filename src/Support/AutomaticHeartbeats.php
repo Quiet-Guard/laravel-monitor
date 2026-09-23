@@ -2,6 +2,7 @@
 
 namespace QuietGuard\LaravelMonitor\Support;
 
+use Closure;
 use Illuminate\Console\Events\CommandStarting;
 use Illuminate\Contracts\Cache\Repository as Cache;
 use Illuminate\Contracts\Foundation\Application;
@@ -42,6 +43,7 @@ final class AutomaticHeartbeats
     /** At most one ping per queue in this window, across every worker sharing the cache. */
     public const QUEUE_PING_EVERY_SECONDS = 60;
 
+    /** Added to the observed cadence, so one missed ping is not an alert. */
     public const SCHEDULER_MIN_GRACE = 4;
 
     /** The slowest cadence the server accepts as a period or a grace, one day. */
@@ -75,6 +77,9 @@ final class AutomaticHeartbeats
      * @var array<string, int>
      */
     private static array $lags = [];
+
+    /** @var (Closure(): bool)|null */
+    private static ?Closure $interactiveDetector = null;
 
     /**
      * The master switch, a key, and an environment both lists allow:
@@ -239,6 +244,13 @@ final class AutomaticHeartbeats
                 return;
             }
 
+            // Typed in a terminal, not started by cron: two runs a minute apart
+            // before an hourly cron would arm a one-minute period for good,
+            // and the server never re-arms. Neither recorded nor pinged.
+            if (self::runByHand()) {
+                return;
+            }
+
             $cache = $app->make(Cache::class);
             $now = Carbon::now()->getTimestamp();
             // Redis hands a stored number back as a numeric string, the array
@@ -257,7 +269,9 @@ final class AutomaticHeartbeats
             $app->make(Transport::class)->pingAuto(self::SCHEDULER_SLUG, [
                 'kind' => 'scheduler',
                 'period' => $period,
-                'grace' => min(self::CADENCE_MAX_MINUTES, max(self::SCHEDULER_MIN_GRACE, $period)),
+                // A full cadence plus a margin: one missed ping (a flushed
+                // cache, a timeout, a 429) must not be an alert.
+                'grace' => min(self::CADENCE_MAX_MINUTES, $period + self::SCHEDULER_MIN_GRACE),
             ]);
         } catch (Throwable $e) {
             self::warn($app, 'scheduler', $e);
@@ -272,6 +286,18 @@ final class AutomaticHeartbeats
     {
         self::$nextCheckAt = [];
         self::$lags = [];
+    }
+
+    /**
+     * Replace how a schedule:run typed in a terminal is told from one cron
+     * started; null restores the STDIN check. For tests, whose own STDIN is a
+     * terminal whenever somebody runs the suite by hand.
+     *
+     * @param  (Closure(): bool)|null  $detector
+     */
+    public static function detectInteractiveUsing(?Closure $detector): void
+    {
+        self::$interactiveDetector = $detector;
     }
 
     private static function beat(Application $app, string $connection, string $queue): void
@@ -313,6 +339,21 @@ final class AutomaticHeartbeats
         // Transport::pingAuto() never throws and sends right now, whatever
         // MONITOR_QUEUE says: a dead queue must not carry its own heartbeat.
         $app->make(Transport::class)->pingAuto(self::slugFor($connection, $queue), $meta);
+    }
+
+    /**
+     * Cron, supervisor and the subprocesses of schedule:work all run with no
+     * terminal on STDIN; a person at a shell has one. Not
+     * InputInterface::isInteractive(), which only says whether --no-interaction
+     * was passed.
+     */
+    private static function runByHand(): bool
+    {
+        if (self::$interactiveDetector !== null) {
+            return (bool) (self::$interactiveDetector)();
+        }
+
+        return defined('STDIN') && is_resource(STDIN) && stream_isatty(STDIN);
     }
 
     private static function schedulerWatched(Application $app): bool

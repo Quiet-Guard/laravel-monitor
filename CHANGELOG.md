@@ -45,6 +45,9 @@ All notable changes to `quiet-guard/laravel-monitor`.
 
 ### Changed
 
+- The core is required as `^0.3.1`: this release calls
+  `Scrubber::scrubUrl()` and relies on the masking rules that arrived with
+  it, so it must never resolve with an older core.
 - A machine that has a key and no `MONITOR_URL`, a staging box for instance,
   now reports to the hosted service. To keep it quiet, leave its
   `MONITOR_KEY` empty or set `MONITOR_ENABLED=false`.

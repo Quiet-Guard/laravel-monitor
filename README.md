@@ -129,14 +129,17 @@ switch and the `MONITOR_ENVIRONMENTS` allowlist, so a staging scheduler never
 pings a production heartbeat.
 
 In production, the SDK also watches your scheduler and queues by itself, no
-wiring needed: it pings a `scheduler` heartbeat every minute and, on every
-worker loop turn, a `queue-{connection}-{queue}` heartbeat per queue watched,
-each arming itself on its first ping. Control it with
-`MONITOR_SCHEDULER_HEARTBEAT`, `MONITOR_QUEUE_HEARTBEATS` and
-`MONITOR_HEARTBEAT_ENVIRONMENTS`. The queue heartbeat's lag measure stays
-empty on Laravel 11 and early 12.x releases, whose job payload carries no
-usable creation timestamp yet. See the "Automatic heartbeats" section of
-the heartbeats page under `/docs` for the full detail.
+wiring needed: it pings a `scheduler` heartbeat each time `schedule:run`
+starts, at your cron's own cadence, and, on every worker loop turn, a
+`queue-{connection}-{queue}` heartbeat per queue watched, each arming itself
+on its first ping. Control it with `MONITOR_SCHEDULER_HEARTBEAT`,
+`MONITOR_QUEUE_HEARTBEATS` and `MONITOR_HEARTBEAT_ENVIRONMENTS`. A queue's
+grace follows the worker's `--timeout` on Laravel 13.10 or later and is nine
+minutes before that. The queue lag measure stays empty on Laravel 11 and on
+12 before 12.11, whose job payload carries no creation timestamp. A
+maintenance window, a paused worker or a job longer than the grace can turn a
+queue heartbeat overdue with nothing broken: the "Automatic heartbeats"
+section of the heartbeats page under `/docs` lists these cases and what to do.
 
 ## Encrypted backups
 

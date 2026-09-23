@@ -236,8 +236,9 @@ final class AutomaticHeartbeats
 
     /**
      * A worker took a job: how long it waited since it was queued. createdAt
-     * is written to the second by Laravel 12 and later; without it (Laravel
-     * 11) nothing is measured, which the ping then omits rather than zeroes.
+     * is written to the second by Laravel 12.11 and later; without it
+     * (Laravel 11, and 12 before 12.11) nothing is measured, which the ping
+     * then omits rather than zeroes.
      */
     public static function onJobProcessing(Application $app, JobProcessing $event): void
     {
@@ -249,8 +250,8 @@ final class AutomaticHeartbeats
             $job = $event->job;
             $createdAt = $job->payload()['createdAt'] ?? null;
 
-            // Nothing to measure: Laravel 11 does not write it, and there is
-            // no reason to ask the job anything else.
+            // Nothing to measure: Laravel 11, and 12 before 12.11, do not
+            // write it, and there is no reason to ask the job anything else.
             if (! is_int($createdAt)) {
                 return;
             }
@@ -412,9 +413,10 @@ final class AutomaticHeartbeats
     /**
      * Looping fires between two jobs only, so one job of fifteen minutes is a
      * worker silent for fifteen minutes with nothing wrong: the grace covers
-     * the worker's own timeout, plus a minute. Laravel 13 puts the worker's
-     * options on the event; older versions, and a timeout of 0 (none), keep
-     * the default.
+     * the worker's own timeout, plus a minute. Laravel 13.10 and later put
+     * the worker's options on the event; older versions, and a timeout of 0
+     * (none), keep the default. A job's own $timeout, which outranks the
+     * worker's at run time, is not on the event and is not covered.
      */
     private static function queueGrace(Looping $event): int
     {

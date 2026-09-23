@@ -130,20 +130,24 @@ return [
     | every five minutes, or hourly, is expected at that pace, with that gap
     | plus four minutes of grace. A run typed in a terminal is ignored. The
     | time is kept in your default cache store, which must outlive the
-    | process: on the `array` store nothing is ever sent.
+    | process: on the `array` store the scheduler sends nothing. Several
+    | hosts on one shared cache count as one: a start less than thirty
+    | seconds from the recorded one is taken for that same start.
     |
     | `queues`: every `queue:work` (Horizon included) pings one heartbeat per
     | queue it consumes, at most once a minute across the workers that share
     | the cache, even while the queue is empty, with the shortest wait it saw
-    | between a job being queued and a worker taking it (Laravel 12 and
+    | between a job being queued and a worker taking it (Laravel 12.11 and
     | later). true (the default) watches every queue a worker consumes, false
     | none, and a list such as "redis:default,redis:emails" only those pairs;
     | a name without a colon is a connection (every queue of it) or a queue
     | (on any connection), so "default,emails" works as written. A worker
-    | pings between two jobs only, so on Laravel 13 its --timeout sets how
-    | long its queue may stay silent, ten minutes at least. `queue:listen`
+    | pings between two jobs only, so on Laravel 13.10 and later its
+    | --timeout plus a minute sets how long its queue may stay silent, nine
+    | minutes at least; earlier versions keep nine minutes. `queue:listen`
     | and `queue:work --once` do not loop, so they ping nothing, and neither
-    | does a worker paused by maintenance mode.
+    | does a worker paused (horizon:pause, SIGUSR2) or stopped by maintenance
+    | mode. A worker whose ping fails sends no queue ping for a minute.
     |
     | `environments`: on top of MONITOR_ENVIRONMENTS, and narrower on purpose,
     | since a staging box switched off at night would alert every evening.

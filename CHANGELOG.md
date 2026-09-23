@@ -7,10 +7,13 @@ All notable changes to `quiet-guard/laravel-monitor`.
 ### Added
 
 - Automatic heartbeats. In production, the SDK pings a `scheduler` heartbeat
-  every minute and, for every watched queue, pings `queue-{connection}-{queue}`
-  from the worker's own loop with how long the last job waited. The scheduler
-  heartbeat needs two runs of `schedule:run` to arm (the first only records
-  the time); a queue heartbeat arms on a worker's first loop turn.
+  each time `schedule:run` starts, at the cron's own cadence, and, for every
+  watched queue, pings `queue-{connection}-{queue}` from the worker's own loop
+  with the shortest wait a job saw since the previous ping (Laravel 12.11 or
+  later). The scheduler heartbeat needs two runs of `schedule:run` to arm (the
+  first only records the time), and several hosts sharing one cache count as
+  one scheduler; a queue heartbeat arms on a worker's first loop turn, with a
+  grace that follows the worker's `--timeout` on Laravel 13.10 or later.
   `MONITOR_SCHEDULER_HEARTBEAT`, `MONITOR_QUEUE_HEARTBEATS` and
   `MONITOR_HEARTBEAT_ENVIRONMENTS` control them. A worker whose ping fails
   sends no queue ping for a minute, so a Quiet Guard server that hangs costs

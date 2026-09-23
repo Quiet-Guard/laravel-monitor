@@ -50,8 +50,6 @@ final class AutomaticHeartbeats
     /** The slowest cadence the server accepts as a period or a grace, one day. */
     public const CADENCE_MAX_MINUTES = 1440;
 
-    public const SCHEDULER_LAST_KEY = 'monitor:hb:scheduler:last';
-
     /** Longer than the slowest cadence measured, so a daily cron still finds its previous start. */
     public const SCHEDULER_LAST_TTL_SECONDS = 604_800;
 
@@ -163,9 +161,25 @@ final class AutomaticHeartbeats
         return Str::slug("queue {$connection} {$queue}");
     }
 
-    public static function queueThrottleKey(string $connection, string $queue): string
+    public static function queueThrottleKey(Application $app, string $connection, string $queue): string
     {
-        return "monitor:hb:queue:{$connection}:{$queue}";
+        return 'monitor:hb:'.self::keyScope($app).":queue:{$connection}:{$queue}";
+    }
+
+    public static function schedulerLastKey(Application $app): string
+    {
+        return 'monitor:hb:'.self::keyScope($app).':scheduler:last';
+    }
+
+    /**
+     * Eight characters of a hash of the project key: two applications on one
+     * Redis with the same prefix would otherwise read each other's scheduler
+     * start and take each other's queue turn. Never the key itself, which is
+     * a credential and has no business in a cache key.
+     */
+    private static function keyScope(Application $app): string
+    {
+        return substr(sha1((string) $app['config']->get('monitor.key')), 0, 8);
     }
 
     /**
@@ -266,9 +280,9 @@ final class AutomaticHeartbeats
             $now = Carbon::now()->getTimestamp();
             // Redis hands a stored number back as a numeric string, the array
             // and file stores as the integer: read both, refuse anything else.
-            $previous = filter_var($cache->get(self::SCHEDULER_LAST_KEY), FILTER_VALIDATE_INT, FILTER_NULL_ON_FAILURE);
+            $previous = filter_var($cache->get(self::schedulerLastKey($app)), FILTER_VALIDATE_INT, FILTER_NULL_ON_FAILURE);
 
-            $cache->put(self::SCHEDULER_LAST_KEY, $now, self::SCHEDULER_LAST_TTL_SECONDS);
+            $cache->put(self::schedulerLastKey($app), $now, self::SCHEDULER_LAST_TTL_SECONDS);
 
             if ($previous === null) {
                 return;
@@ -336,7 +350,7 @@ final class AutomaticHeartbeats
         // One ping per queue per minute across the workers sharing this cache.
         // Without a shared cache each worker pings on its own, which the
         // server takes as the same heartbeat.
-        if (! $app->make(Cache::class)->add(self::queueThrottleKey($connection, $queue), $now, self::QUEUE_PING_EVERY_SECONDS)) {
+        if (! $app->make(Cache::class)->add(self::queueThrottleKey($app, $connection, $queue), $now, self::QUEUE_PING_EVERY_SECONDS)) {
             return true;
         }
 

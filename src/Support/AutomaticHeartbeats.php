@@ -8,6 +8,7 @@ use Illuminate\Contracts\Cache\Repository as Cache;
 use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Queue\Events\JobProcessing;
 use Illuminate\Queue\Events\Looping;
+use Illuminate\Queue\WorkerOptions;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Str;
 use QuietGuard\LaravelMonitor\Http\Transport;
@@ -116,7 +117,8 @@ final class AutomaticHeartbeats
      *
      * true, null, "" or "true": every queue a worker consumes. false, "false",
      * "0" or "off": none. Anything else: a comma list of "connection:queue"
-     * pairs, a connection alone standing for every queue of it.
+     * pairs; a name without a colon matches a connection (every queue of it)
+     * or a queue (on any connection), so "default,emails" reads as written.
      */
     public static function watches(Application $app, string $connection, string $queue): bool
     {
@@ -144,8 +146,11 @@ final class AutomaticHeartbeats
             }
 
             [$watchedConnection, $watchedQueue] = array_pad(explode(':', trim($entry), 2), 2, null);
+            $watchedConnection = trim($watchedConnection);
 
-            if (trim($watchedConnection) === $connection && ($watchedQueue === null || trim($watchedQueue) === $queue)) {
+            if ($watchedQueue === null
+                ? in_array($watchedConnection, [$connection, $queue], true)
+                : $watchedConnection === $connection && trim($watchedQueue) === $queue) {
                 return true;
             }
         }
@@ -178,6 +183,7 @@ final class AutomaticHeartbeats
             }
 
             $connection = (string) $event->connectionName;
+            $grace = self::queueGrace($event);
         } catch (Throwable $e) {
             self::warn($app, 'queue', $e);
 
@@ -186,11 +192,15 @@ final class AutomaticHeartbeats
 
         foreach (array_unique(array_filter(array_map('trim', explode(',', $event->queue)))) as $queue) {
             try {
-                if (self::watches($app, $connection, $queue)) {
-                    self::beat($app, $connection, $queue);
+                if (self::watches($app, $connection, $queue) && ! self::beat($app, $connection, $queue, $grace)) {
+                    // A server that hangs costs one timeout per turn, not one
+                    // per queue: the rest wait for the next turn, seconds away.
+                    return;
                 }
             } catch (Throwable $e) {
                 self::warn($app, 'queue', $e);
+
+                return;
             }
         }
     }
@@ -208,15 +218,16 @@ final class AutomaticHeartbeats
             }
 
             $job = $event->job;
+            $createdAt = $job->payload()['createdAt'] ?? null;
 
-            // A retry waited on its backoff, not on a worker.
-            if ($job->attempts() > 1) {
+            // Nothing to measure: Laravel 11 does not write it, and there is
+            // no reason to ask the job anything else.
+            if (! is_int($createdAt)) {
                 return;
             }
 
-            $createdAt = $job->payload()['createdAt'] ?? null;
-
-            if (! is_int($createdAt)) {
+            // A retry waited on its backoff, not on a worker.
+            if ($job->attempts() > 1) {
                 return;
             }
 
@@ -300,13 +311,17 @@ final class AutomaticHeartbeats
         self::$interactiveDetector = $detector;
     }
 
-    private static function beat(Application $app, string $connection, string $queue): void
+    /**
+     * False only when a ping was sent and failed; skipping a queue this turn,
+     * or leaving it to another worker, is not a failure.
+     */
+    private static function beat(Application $app, string $connection, string $queue, int $grace): bool
     {
         $key = "{$connection}:{$queue}";
         $now = Carbon::now()->getTimestamp();
 
         if ((self::$nextCheckAt[$key] ?? 0) > $now) {
-            return;
+            return true;
         }
 
         // Set before anything that can fail: a broken cache is asked, and
@@ -322,13 +337,13 @@ final class AutomaticHeartbeats
         // Without a shared cache each worker pings on its own, which the
         // server takes as the same heartbeat.
         if (! $app->make(Cache::class)->add(self::queueThrottleKey($connection, $queue), $now, self::QUEUE_PING_EVERY_SECONDS)) {
-            return;
+            return true;
         }
 
         $meta = [
             'kind' => 'queue',
             'period' => self::QUEUE_PERIOD,
-            'grace' => self::QUEUE_GRACE,
+            'grace' => $grace,
             'queue' => "{$connection}/{$queue}",
         ];
 
@@ -338,7 +353,26 @@ final class AutomaticHeartbeats
 
         // Transport::pingAuto() never throws and sends right now, whatever
         // MONITOR_QUEUE says: a dead queue must not carry its own heartbeat.
-        $app->make(Transport::class)->pingAuto(self::slugFor($connection, $queue), $meta);
+        return $app->make(Transport::class)->pingAuto(self::slugFor($connection, $queue), $meta);
+    }
+
+    /**
+     * Looping fires between two jobs only, so one job of fifteen minutes is a
+     * worker silent for fifteen minutes with nothing wrong: the grace covers
+     * the worker's own timeout, plus a minute. Laravel 13 puts the worker's
+     * options on the event; older versions, and a timeout of 0 (none), keep
+     * the default.
+     */
+    private static function queueGrace(Looping $event): int
+    {
+        $options = $event->workerOptions ?? null;
+        $timeout = $options instanceof WorkerOptions ? $options->timeout : null;
+
+        if (! is_numeric($timeout) || (int) $timeout <= 0) {
+            return self::QUEUE_GRACE;
+        }
+
+        return min(self::CADENCE_MAX_MINUTES, max(self::QUEUE_GRACE, (int) ceil((int) $timeout / 60) + 1));
     }
 
     /**

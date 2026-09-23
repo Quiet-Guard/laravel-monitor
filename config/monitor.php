@@ -137,10 +137,13 @@ return [
     | the cache, even while the queue is empty, with the shortest wait it saw
     | between a job being queued and a worker taking it (Laravel 12 and
     | later). true (the default) watches every queue a worker consumes, false
-    | none, and a list such as "redis:default,redis:emails" only those pairs
-    | ("redis" alone: every queue of that connection). `queue:listen` and
-    | `queue:work --once` do not loop, so they ping nothing, and neither does
-    | a worker paused by maintenance mode.
+    | none, and a list such as "redis:default,redis:emails" only those pairs;
+    | a name without a colon is a connection (every queue of it) or a queue
+    | (on any connection), so "default,emails" works as written. A worker
+    | pings between two jobs only, so on Laravel 13 its --timeout sets how
+    | long its queue may stay silent, ten minutes at least. `queue:listen`
+    | and `queue:work --once` do not loop, so they ping nothing, and neither
+    | does a worker paused by maintenance mode.
     |
     | `environments`: on top of MONITOR_ENVIRONMENTS, and narrower on purpose,
     | since a staging box switched off at night would alert every evening.

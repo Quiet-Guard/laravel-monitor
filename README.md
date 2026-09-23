@@ -133,7 +133,9 @@ wiring needed: it pings a `scheduler` heartbeat every minute and, on every
 worker loop turn, a `queue-{connection}-{queue}` heartbeat per queue watched,
 each arming itself on its first ping. Control it with
 `MONITOR_SCHEDULER_HEARTBEAT`, `MONITOR_QUEUE_HEARTBEATS` and
-`MONITOR_HEARTBEAT_ENVIRONMENTS`. See the "Automatic heartbeats" section of
+`MONITOR_HEARTBEAT_ENVIRONMENTS`. The queue heartbeat's lag measure stays
+empty on Laravel 11 and early 12.x releases, whose job payload carries no
+usable creation timestamp yet. See the "Automatic heartbeats" section of
 the heartbeats page under `/docs` for the full detail.
 
 ## Encrypted backups

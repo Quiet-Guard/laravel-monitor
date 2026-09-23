@@ -8,10 +8,11 @@ All notable changes to `quiet-guard/laravel-monitor`.
 
 - Automatic heartbeats. In production, the SDK pings a `scheduler` heartbeat
   every minute and, for every watched queue, pings `queue-{connection}-{queue}`
-  from the worker's own loop with how long the last job waited. The server
-  arms them on their first ping; nothing is created until the scheduler or a
-  worker has run once. `MONITOR_SCHEDULER_HEARTBEAT`, `MONITOR_QUEUE_HEARTBEATS`
-  and `MONITOR_HEARTBEAT_ENVIRONMENTS` control them.
+  from the worker's own loop with how long the last job waited. The scheduler
+  heartbeat needs two runs of `schedule:run` to arm (the first only records
+  the time); a queue heartbeat arms on a worker's first loop turn.
+  `MONITOR_SCHEDULER_HEARTBEAT`, `MONITOR_QUEUE_HEARTBEATS` and
+  `MONITOR_HEARTBEAT_ENVIRONMENTS` control them.
 - `Transport::pingAuto()`.
 
 ### Requires

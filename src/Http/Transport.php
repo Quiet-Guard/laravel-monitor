@@ -109,6 +109,17 @@ class Transport
     }
 
     /**
+     * Ping a heartbeat the SDK declared by itself, saying what it is and how
+     * often it comes so the server arms it on its first ping.
+     *
+     * @param  array{kind: string, period: int, grace: int, queue?: string, lag_ms?: int}  $meta
+     */
+    public function pingAuto(string $slug, array $meta): bool
+    {
+        return $this->post('/api/v1/heartbeats/'.rawurlencode($slug), ['auto' => true, ...$meta], 'heartbeat');
+    }
+
+    /**
      * Fetch the team's encryption key material (public key + wrapped private key
      * + salt) for backup sealing / restoring.
      *

@@ -3,6 +3,7 @@
 namespace QuietGuard\LaravelMonitor;
 
 use Illuminate\Console\Scheduling\Event;
+use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Contracts\Debug\ExceptionHandler;
 use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Log\Events\MessageLogged;
@@ -15,6 +16,7 @@ use QuietGuard\LaravelMonitor\Console\ListBackupsCommand;
 use QuietGuard\LaravelMonitor\Console\ReportDependenciesCommand;
 use QuietGuard\LaravelMonitor\Console\RestoreCommand;
 use QuietGuard\LaravelMonitor\Http\Transport;
+use QuietGuard\LaravelMonitor\Support\AutomaticHeartbeats;
 use QuietGuard\LaravelMonitor\Support\LogCollector;
 use QuietGuard\LaravelMonitor\Support\PayloadBuilder;
 use QuietGuard\LaravelMonitor\Support\ReleaseResolver;
@@ -118,6 +120,13 @@ class LaravelMonitorServiceProvider extends ServiceProvider
                 ListBackupsCommand::class,
                 RestoreCommand::class,
             ]);
+
+            // The scheduler and queue heartbeats, added to the application's
+            // own Schedule. Only in console: the Schedule is only ever run
+            // from there.
+            $this->callAfterResolving(Schedule::class, function (Schedule $schedule): void {
+                AutomaticHeartbeats::register($schedule, $this->app);
+            });
         }
 
         $this->registerExceptionHook();

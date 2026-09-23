@@ -114,6 +114,31 @@ return [
     ],
 
     /*
+    |--------------------------------------------------------------------------
+    | Automatic heartbeats
+    |--------------------------------------------------------------------------
+    |
+    | The SDK pings a `scheduler` heartbeat every minute and, per watched queue,
+    | dispatches a small probe job that pings from the worker with how long it
+    | waited. The server arms them on their first ping. Nothing is created
+    | until the scheduler or a worker has really run once, so an application
+    | without either never gets an alert from this.
+    |
+    | `queues`: "connection:queue" pairs separated by commas. Empty watches the
+    | default queue of the default connection; "false" watches none. Drivers
+    | without a worker (sync, null, deferred, background) are skipped.
+    |
+    | `environments`: narrower than MONITOR_ENVIRONMENTS on purpose, since a
+    | staging box switched off at night would alert every evening.
+    |
+    */
+    'heartbeats' => [
+        'scheduler' => (bool) env('MONITOR_SCHEDULER_HEARTBEAT', true),
+        'queues' => (string) env('MONITOR_QUEUE_HEARTBEATS', ''),
+        'environments' => array_values(array_filter(array_map('trim', explode(',', (string) env('MONITOR_HEARTBEAT_ENVIRONMENTS', 'production'))))),
+    ],
+
+    /*
     | Value masking, by shape rather than by field name.
     |
     | 'scrub' below hides a value because of what its field is CALLED. It never

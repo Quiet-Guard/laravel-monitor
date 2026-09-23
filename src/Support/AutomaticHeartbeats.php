@@ -44,6 +44,9 @@ final class AutomaticHeartbeats
     /** At most one ping per queue in this window, across every worker sharing the cache. */
     public const QUEUE_PING_EVERY_SECONDS = 60;
 
+    /** How long a worker sends no queue ping at all after one failed. */
+    public const PAUSE_AFTER_FAILURE_SECONDS = 60;
+
     /** Added to the observed cadence, so one missed ping is not an alert. */
     public const SCHEDULER_MIN_GRACE = 4;
 
@@ -76,6 +79,14 @@ final class AutomaticHeartbeats
      * @var array<string, int>
      */
     private static array $lags = [];
+
+    /**
+     * Until when this process sends no queue ping, after one failed. Stopping
+     * the turn is not enough: every queue it skipped is due at the next turn,
+     * seconds away, so a server that hangs would still cost one timeout per
+     * queue and per minute. Paused, it costs one a minute.
+     */
+    private static int $pausedUntil = 0;
 
     /** @var (Closure(): bool)|null */
     private static ?Closure $interactiveDetector = null;
@@ -192,7 +203,7 @@ final class AutomaticHeartbeats
     public static function onLooping(Application $app, Looping $event): void
     {
         try {
-            if (! self::active($app) || ! is_string($event->queue)) {
+            if (Carbon::now()->getTimestamp() < self::$pausedUntil || ! self::active($app) || ! is_string($event->queue)) {
                 return;
             }
 
@@ -207,11 +218,12 @@ final class AutomaticHeartbeats
         foreach (array_unique(array_filter(array_map('trim', explode(',', $event->queue)))) as $queue) {
             try {
                 if (self::watches($app, $connection, $queue) && ! self::beat($app, $connection, $queue, $grace)) {
-                    // A server that hangs costs one timeout per turn, not one
-                    // per queue: the rest wait for the next turn, seconds away.
+                    self::pauseQueuePings();
+
                     return;
                 }
             } catch (Throwable $e) {
+                self::pauseQueuePings();
                 self::warn($app, 'queue', $e);
 
                 return;
@@ -311,6 +323,7 @@ final class AutomaticHeartbeats
     {
         self::$nextCheckAt = [];
         self::$lags = [];
+        self::$pausedUntil = 0;
     }
 
     /**
@@ -368,6 +381,15 @@ final class AutomaticHeartbeats
         // Transport::pingAuto() never throws and sends right now, whatever
         // MONITOR_QUEUE says: a dead queue must not carry its own heartbeat.
         return $app->make(Transport::class)->pingAuto(self::slugFor($connection, $queue), $meta);
+    }
+
+    /**
+     * A ping failed or threw: every queue of this process waits a minute. The
+     * other workers keep their own clock, each paying one timeout a minute.
+     */
+    private static function pauseQueuePings(): void
+    {
+        self::$pausedUntil = Carbon::now()->getTimestamp() + self::PAUSE_AFTER_FAILURE_SECONDS;
     }
 
     /**

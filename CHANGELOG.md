@@ -12,7 +12,9 @@ All notable changes to `quiet-guard/laravel-monitor`.
   heartbeat needs two runs of `schedule:run` to arm (the first only records
   the time); a queue heartbeat arms on a worker's first loop turn.
   `MONITOR_SCHEDULER_HEARTBEAT`, `MONITOR_QUEUE_HEARTBEATS` and
-  `MONITOR_HEARTBEAT_ENVIRONMENTS` control them.
+  `MONITOR_HEARTBEAT_ENVIRONMENTS` control them. A worker whose ping fails
+  sends no queue ping for a minute, so a Quiet Guard server that hangs costs
+  each worker one `MONITOR_TIMEOUT` a minute, whatever the number of queues.
 - `Transport::pingAuto()`.
 
 ### Requires

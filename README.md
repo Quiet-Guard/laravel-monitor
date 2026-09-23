@@ -128,6 +128,14 @@ setting its expected period. The macro honours the `MONITOR_ENABLED` master
 switch and the `MONITOR_ENVIRONMENTS` allowlist, so a staging scheduler never
 pings a production heartbeat.
 
+In production, the SDK also watches your scheduler and queues by itself, no
+wiring needed: it pings a `scheduler` heartbeat every minute and, on every
+worker loop turn, a `queue-{connection}-{queue}` heartbeat per queue watched,
+each arming itself on its first ping. Control it with
+`MONITOR_SCHEDULER_HEARTBEAT`, `MONITOR_QUEUE_HEARTBEATS` and
+`MONITOR_HEARTBEAT_ENVIRONMENTS`. See the "Automatic heartbeats" section of
+the heartbeats page under `/docs` for the full detail.
+
 ## Encrypted backups
 
 With the backups feature enabled on your plan, upload zero-knowledge encrypted

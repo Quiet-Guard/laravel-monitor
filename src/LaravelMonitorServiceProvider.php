@@ -2,13 +2,15 @@
 
 namespace QuietGuard\LaravelMonitor;
 
+use Illuminate\Console\Events\CommandStarting;
 use Illuminate\Console\Scheduling\Event;
-use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Contracts\Debug\ExceptionHandler;
 use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Log\Events\MessageLogged;
 use Illuminate\Queue\Events\JobFailed;
 use Illuminate\Queue\Events\JobProcessed;
+use Illuminate\Queue\Events\JobProcessing;
+use Illuminate\Queue\Events\Looping;
 use Illuminate\Support\ServiceProvider;
 use QuietGuard\LaravelMonitor\Console\BackupCommand;
 use QuietGuard\LaravelMonitor\Console\HeartbeatCommand;
@@ -121,17 +123,38 @@ class LaravelMonitorServiceProvider extends ServiceProvider
                 RestoreCommand::class,
             ]);
 
-            // The scheduler and queue heartbeats, added to the application's
-            // own Schedule. Only in console: the Schedule is only ever run
-            // from there.
-            $this->callAfterResolving(Schedule::class, function (Schedule $schedule): void {
-                AutomaticHeartbeats::register($schedule, $this->app);
-            });
+            $this->registerAutomaticHeartbeats();
         }
 
         $this->registerExceptionHook();
         $this->registerLogHook();
         $this->registerSchedulerMacro();
+    }
+
+    /**
+     * The scheduler and queue heartbeats, pinged from the worker's own loop
+     * and from schedule:run's own start. Only in console, where both run.
+     * Registered whatever the config says: the gate is read at every event,
+     * since the config can change after boot and a cached one must not
+     * disagree with it.
+     */
+    private function registerAutomaticHeartbeats(): void
+    {
+        $events = $this->app['events'];
+
+        // The Worker dispatches Looping with until() and stops the daemon on
+        // a false answer. A void listener answers null: keep it that way.
+        $events->listen(Looping::class, function (Looping $event): void {
+            AutomaticHeartbeats::onLooping($this->app, $event);
+        });
+
+        $events->listen(JobProcessing::class, function (JobProcessing $event): void {
+            AutomaticHeartbeats::onJobProcessing($this->app, $event);
+        });
+
+        $events->listen(CommandStarting::class, function (CommandStarting $event): void {
+            AutomaticHeartbeats::onCommandStarting($this->app, $event);
+        });
     }
 
     /**

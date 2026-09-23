@@ -118,23 +118,36 @@ return [
     | Automatic heartbeats
     |--------------------------------------------------------------------------
     |
-    | The SDK pings a `scheduler` heartbeat every minute and, per watched queue,
-    | dispatches a small probe job that pings from the worker with how long it
-    | waited. The server arms them on their first ping. Nothing is created
-    | until the scheduler or a worker has really run once, so an application
-    | without either never gets an alert from this.
+    | Two silences nothing else in the SDK can see, because neither raises an
+    | exception: a scheduler that stopped and a worker that died. Nothing is
+    | added to your application, no scheduled entry and no job; the server
+    | arms each heartbeat on its first ping. An application without a
+    | scheduler or a worker never creates one, so it is never alerted.
     |
-    | `queues`: "connection:queue" pairs separated by commas. Empty watches the
-    | default queue of the default connection; "false" watches none. Drivers
-    | without a worker (sync, null, deferred, background) are skipped.
+    | `scheduler`: each `schedule:run` pings a `scheduler` heartbeat as it
+    | starts, maintenance mode included. The first run only records the time
+    | and the second pings with the gap observed between the two, so a cron
+    | every five minutes, or hourly, is expected at that pace. The time is
+    | kept in your default cache store, which must outlive the process: on
+    | the `array` store nothing is ever sent.
     |
-    | `environments`: narrower than MONITOR_ENVIRONMENTS on purpose, since a
-    | staging box switched off at night would alert every evening.
+    | `queues`: every `queue:work` (Horizon included) pings one heartbeat per
+    | queue it consumes, at most once a minute across the workers that share
+    | the cache, even while the queue is empty, with the shortest wait it saw
+    | between a job being queued and a worker taking it (Laravel 12 and
+    | later). true (the default) watches every queue a worker consumes, false
+    | none, and a list such as "redis:default,redis:emails" only those pairs
+    | ("redis" alone: every queue of that connection). `queue:listen` and
+    | `queue:work --once` do not loop, so they ping nothing, and neither does
+    | a worker paused by maintenance mode.
+    |
+    | `environments`: on top of MONITOR_ENVIRONMENTS, and narrower on purpose,
+    | since a staging box switched off at night would alert every evening.
     |
     */
     'heartbeats' => [
-        'scheduler' => (bool) env('MONITOR_SCHEDULER_HEARTBEAT', true),
-        'queues' => (string) env('MONITOR_QUEUE_HEARTBEATS', ''),
+        'scheduler' => env('MONITOR_SCHEDULER_HEARTBEAT', true),
+        'queues' => env('MONITOR_QUEUE_HEARTBEATS', true),
         'environments' => array_values(array_filter(array_map('trim', explode(',', (string) env('MONITOR_HEARTBEAT_ENVIRONMENTS', 'production'))))),
     ],
 

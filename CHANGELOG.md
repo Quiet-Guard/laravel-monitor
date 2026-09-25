@@ -2,7 +2,7 @@
 
 All notable changes to `quiet-guard/laravel-monitor`.
 
-## v0.4.0 (unreleased)
+## v0.4.0
 
 ### Added
 
@@ -19,6 +19,12 @@ All notable changes to `quiet-guard/laravel-monitor`.
   sends no queue ping for a minute, so a Quiet Guard server that hangs costs
   each worker one `MONITOR_TIMEOUT` a minute, whatever the number of queues.
 - `Transport::pingAuto()`.
+
+### Changed
+
+- The core is required as `^0.4.0`. It carries no change of its own and is
+  released at the same version, so the four packages of the family install
+  as one.
 
 ### Requires
 

@@ -2,7 +2,7 @@
 
 All notable changes to `quiet-guard/laravel-monitor`.
 
-## v0.5.0 (unreleased)
+## v0.5.0
 
 ### Added
 
@@ -14,6 +14,12 @@ All notable changes to `quiet-guard/laravel-monitor`.
   tables then vacuumed, so the deleted rows are not left readable in its free
   pages. A name carrying anything but letters, digits, `_`, `$` and `-` stops
   the command before any request, rather than backing the table up anyway.
+
+### Changed
+
+- The core is required as `^0.5.0`. It carries no change of its own and is
+  released at the same version, so the four packages of the family install
+  as one.
 
 ## v0.4.0
 

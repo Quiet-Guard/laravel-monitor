@@ -2,6 +2,19 @@
 
 All notable changes to `quiet-guard/laravel-monitor`.
 
+## v0.5.0 (unreleased)
+
+### Added
+
+- `monitor:backup --exclude-table=<table>`, repeatable, with `--database`
+  only. The table's structure stays in the backup and its rows do not: two
+  `mysqldump` passes on MySQL and MariaDB (every structure, then every row but
+  the excluded tables, each pass with `--single-transaction`),
+  `--exclude-table-data` on PostgreSQL, and on SQLite a copy emptied of those
+  tables then vacuumed, so the deleted rows are not left readable in its free
+  pages. A name carrying anything but letters, digits, `_`, `$` and `-` stops
+  the command before any request, rather than backing the table up anyway.
+
 ## v0.4.0
 
 ### Added

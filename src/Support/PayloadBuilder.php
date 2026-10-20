@@ -56,7 +56,10 @@ class PayloadBuilder
         return [
             'exception' => [
                 'class' => Cut::to($e::class, 255),
-                'message' => Cut::to($e->getMessage(), 8192),
+                // Soft, at a whitespace past the limit: the hard cut comes
+                // after masking (Transport::redact), so a token straddling
+                // the limit is masked whole rather than halved in clear.
+                'message' => Cut::soft($e->getMessage(), Cut::LIMITS['message']),
                 'code' => $e->getCode(),
                 'file' => Cut::to($e->getFile(), 1024),
                 'line' => $e->getLine(),
@@ -177,8 +180,10 @@ class PayloadBuilder
 
             $secrets = [];
 
+            // The key rule plus the names that are a credential in an address
+            // (hash, signature...): the segment is part of the address.
             foreach ($route->originalParameters() as $name => $value) {
-                if (is_string($name) && is_scalar($value) && (string) $value !== '' && $this->scrubber->masks($name)) {
+                if (is_string($name) && is_scalar($value) && (string) $value !== '' && $this->scrubber->masksParameter($name)) {
                     $secrets[] = (string) $value;
                 }
             }

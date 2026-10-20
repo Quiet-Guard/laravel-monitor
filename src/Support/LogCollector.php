@@ -54,7 +54,10 @@ class LogCollector
         // trop long l'est aussi (max:8192). Dans les deux cas la validation
         // échoue pour le LOT ENTIER : une seule ligne mal formée faisait perdre
         // les deux cents autres, sans que personne ne l'apprenne.
-        $message = Cut::to($message, 8192) ?? '';
+        // Soft, at a whitespace past the limit: the hard cut comes after
+        // masking (Transport::redact), so a token straddling the limit is
+        // masked whole rather than halved in clear.
+        $message = Cut::soft($message, Cut::LIMITS['message']) ?? '';
 
         if (trim($message) === '') {
             $message = '(empty log message)';

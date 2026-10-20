@@ -17,18 +17,27 @@ All notable changes to `quiet-guard/laravel-monitor`.
   applies on top. The six visitor IP headers are absent from the list and a
   customer with a legal basis adds them, removing them from `scrub`
   (`forwarded` included, since it masks `x-forwarded-for` by substring).
-- A route parameter whose NAME the scrub list matches is masked in the
-  reported URL whatever its length (`/reset-password/{token}`): the path rule
-  only knew a token by its shape, forty letters or digits, which stays as the
-  safety net. Read from `$request->route()`, failing open on anything
-  unexpected.
+- A route parameter whose NAME the scrub list matches, or that is a
+  credential in an address (`hash`, `signature`: Laravel's own
+  `/email/verify/{id}/{hash}`), is masked in the reported URL whatever its
+  length (`/reset-password/{token}`): the path rule only knew a token by its
+  shape, forty letters or digits, which stays as the safety net. Read from
+  `$request->route()`, failing open on anything unexpected.
+- The message is no longer cut hard at 8192 characters before masking, which
+  let the first half of a token straddling the cut leave in clear: it is cut
+  softly at a whitespace past the limit (`PayloadBuilder`, `LogCollector`),
+  masked whole, then cut at the limit (`Transport::redact`, through the
+  core's `Cut::before()` and `Cut::payload()`). A request context past the
+  65 535 bytes the server keeps is replaced before masking by the server's
+  own marker rather than scanned whole.
 - Credentials are masked by their shape wherever they sit, the queued path
   included (the report is masked before it is dispatched), through the core's
   `ValueRedactor`: see the core's changelog for the shapes. The published
-  configuration template now reads `ValueRedactor::PATTERNS` instead of a
-  copied list, so a published copy follows the package; a copy published
-  before this version keeps the five personal shapes it names and masks no
-  credential until it is edited.
+  configuration template now writes `'redact' => null`, the client's own
+  list, so a published copy follows the package and names no class of it
+  (removing the package never makes that file fatal); the exact list a copy
+  published before this version carries, `['email', 'iban', 'nir', 'card',
+  'phone']`, is read as the default it was, so it masks credentials too.
 
 ### Changed
 

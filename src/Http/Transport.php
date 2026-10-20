@@ -59,6 +59,13 @@ class Transport
         // serveur et se faire refuser par le même 422 silencieux que la
         // troncature existe pour empêcher. Un message de numéros coupé à 8192
         // en ressortait à plus de douze mille.
+        // Et une borne AVANT aussi (Cut::before) : un message coupé à sa
+        // limite avant le masquage laissait partir en clair la moitié d'un
+        // jeton à cheval sur la coupe, donc la coupe d'avant est molle, sur
+        // un blanc, et un contexte que le serveur remplacera de toute façon
+        // n'est pas analysé en entier.
+        $payload = Cut::before($payload);
+
         return Cut::payload($this->redactor?->redactAll($payload) ?? $payload);
     }
 

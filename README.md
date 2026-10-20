@@ -185,9 +185,12 @@ From version 0.6.0, request headers go out on an allow list
 only when the list names it; the scrub list still applies on top. Values are
 also masked by their shape wherever they sit, message text and code snippet
 lines included: personal data (`email`, `iban`, `nir`, `card`, `phone`) and
-credentials recognised by their prefix (Stripe, AWS, GitHub, GitLab and Slack
-keys, JWTs, private key blocks, a Laravel `APP_KEY`, a Quiet Guard project key,
-the password of a `user:password@host` in an address). A route parameter whose
+credentials recognised by their prefix (Stripe keys, an AWS access key id and
+its secret key when it follows one, GitHub, GitLab and Slack tokens, JWTs,
+private key blocks, a Laravel `APP_KEY`, a Quiet Guard project key, the
+password of a `user:password@host` in an address). A published configuration
+leaves `redact` at `null`, the client's own list; the exact pre-0.6.0 list
+`['email', 'iban', 'nir', 'card', 'phone']` is read as the default it was. A route parameter whose
 name the scrub list matches is masked in the reported URL whatever its length,
 and a field the engine could not read is withheld as `[redacted:unscannable]`
 rather than sent as it came.

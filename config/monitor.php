@@ -1,7 +1,5 @@
 <?php
 
-use QuietGuard\Monitor\Support\ValueRedactor;
-
 return [
 
     /*
@@ -177,22 +175,31 @@ return [
     | Personal data: email, iban, nir (French social security), card, phone
     | (French numbering plan). Credentials, since 0.6.0: private_key (a
     | -----BEGIN ... PRIVATE KEY----- block), jwt, stripe (sk_live_, sk_test_,
-    | rk_live_, rk_test_, whsec_), aws (AKIA, ASIA), github (ghp_, gho_, ghu_,
-    | ghs_, ghr_, github_pat_), gitlab (glpat-), slack (xox?-), app_key (a
-    | Laravel APP_KEY, base64:...), project_key (a Quiet Guard lm_ key) and
-    | url_password (the password of a user:password@host in an address of any
-    | scheme, the scheme, the user and the host staying readable).
+    | rk_live_, rk_test_, whsec_), aws (an AKIA/ASIA access key id) and
+    | aws_secret (the secret key, only within eighty characters after such an
+    | id or after the name aws_secret_access_key), github (ghp_, gho_, ghu_,
+    | ghs_, ghr_, github_pat_), gitlab (glpat-, glrt-, gldt-, gloas-, glptt-,
+    | glffct-, glimt-, glagent-, glcbt-, glsoat-), slack (xox?-, xapp-, and
+    | the path of a hooks.slack.com webhook), app_key (a Laravel APP_KEY,
+    | base64:...), project_key (a Quiet Guard lm_ key) and url_password (the
+    | password of a user:password@host in an address of any scheme, the
+    | scheme, the user and the host staying readable).
     |
-    | The list below is the client's own, so a shape added to a later version
-    | reaches a published copy of this file. To remove one, write the list
-    | out: 'redact' => ['email', 'iban', 'card', ...]. Set it to [] to send
-    | payloads untouched: Quiet Guard still masks the credential shapes on
-    | arrival, never the personal ones, which are yours to decide.
+    | null means the client's own list, every shape above and whatever a
+    | later version adds, so a published copy of this file follows the
+    | package and names no class of it (removing the package never makes this
+    | file fatal). To remove a shape, write the list out:
+    | 'redact' => ['email', 'iban', 'card', ...]. The exact list this file
+    | shipped before 0.6.0, ['email', 'iban', 'nir', 'card', 'phone'], is
+    | read as the default it was, since every published copy carries it. Set
+    | it to [] to send payloads untouched: Quiet Guard still masks the
+    | credential shapes on arrival, never the personal ones, which are yours
+    | to decide.
     |
     | A value the engine cannot scan (a PCRE limit hit on a built-in shape) is
     | replaced whole by [redacted:unscannable] rather than sent as it came.
     */
-    'redact' => ValueRedactor::PATTERNS,
+    'redact' => null,
 
     /*
     | Your own shapes: label => PCRE pattern. The label appears in the payload,

@@ -61,8 +61,12 @@ class LaravelMonitorServiceProvider extends ServiceProvider
                 $config['key'] ?? null,
                 (int) ($config['timeout'] ?? 3),
                 $app->make('log'),
+                // Null (the template's value, and an absent key) is the
+                // client's own list: a published configuration names no
+                // class of the package, so removing the package never makes
+                // that file fatal. A list written out is read as it is.
                 new ValueRedactor(
-                    $config['redact'] ?? ValueRedactor::PATTERNS,
+                    is_array($config['redact'] ?? null) ? $config['redact'] : ValueRedactor::PATTERNS,
                     $config['redact_custom'] ?? [],
                 ),
             );

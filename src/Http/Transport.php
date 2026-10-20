@@ -180,6 +180,9 @@ class Transport
     /** The server's own words about the last call that failed; null after a success. */
     private ?string $lastError = null;
 
+    /** The JSON body of the last accepted post, so a caller can read `stored`. */
+    private ?array $lastAccepted = null;
+
     /**
      * La clé est la seule chose que nous ne pouvons pas deviner.
      *
@@ -284,6 +287,15 @@ class Transport
     public function lastError(): ?string
     {
         return $this->lastError;
+    }
+
+    /**
+     * Whether the server kept the last exception or log batch it accepted.
+     * Over the monthly quota it still answers 202, with `stored: false`.
+     */
+    public function lastStored(): bool
+    {
+        return ($this->lastAccepted['stored'] ?? true) !== false;
     }
 
     /**
@@ -419,6 +431,7 @@ class Transport
 
             if ($response->successful()) {
                 $this->lastError = null;
+                $this->lastAccepted = (array) $response->json();
 
                 return true;
             }

@@ -55,8 +55,14 @@ class TestCommand extends Command
             return self::FAILURE;
         }
 
+        if (! $transport->lastStored()) {
+            $this->error('The server received the test exception but did not keep it: this month\'s exception quota is used up.');
+
+            return self::FAILURE;
+        }
+
         $this->info('Test exception sent. It appears in the project\'s Issues tab within a few seconds.');
-        $this->line('Alert channels subscribed to new issues are notified once; running the command again groups into the same issue.');
+        $this->line('Like a real one, it notifies the alert channels subscribed to new issues, and opens a GitHub issue if the project creates them automatically. Running the command again groups into the same issue.');
 
         return self::SUCCESS;
     }

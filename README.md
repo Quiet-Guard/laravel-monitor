@@ -102,6 +102,35 @@ and the `MONITOR_ENVIRONMENTS` allowlist applies to logs exactly like exceptions
 Logs require the **logs** feature on your plan, and forwarded entries count
 toward your team's monthly event quota alongside exceptions.
 
+## Browser errors
+
+Turn on **Browser errors** in the project's settings, list the origins your
+pages are served from, and copy the browser key it shows. It is a public key,
+different from `MONITOR_KEY`:
+
+```dotenv
+MONITOR_BROWSER_KEY=your-public-browser-key
+```
+
+Then add the directive to the `<head>` of your layout:
+
+```blade
+<head>
+    @quietGuardBrowser
+    ...
+</head>
+```
+
+The directive prints a small script inline (no npm package, no asset to
+publish) that reports uncaught errors and unhandled promise rejections into the
+same issues as your PHP exceptions. Each report carries the page address
+without its query string or fragment, the user agent, the error and its stack;
+no cookie, no identifier, and the server stores no IP address. It prints nothing
+without the key, or when `MONITOR_ENABLED` and `MONITOR_ENVIRONMENTS` would not
+report an exception. With a Content-Security-Policy, the script takes the nonce
+Vite gives the page, and `connect-src` must allow the server's origin. There
+are no source maps: frames show the built bundle.
+
 ## Dependency vulnerability scanning
 
 Report the app's installed packages (from `composer.lock`) so the server can scan

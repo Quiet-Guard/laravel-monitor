@@ -13,6 +13,18 @@ All notable changes to `quiet-guard/laravel-monitor`.
   it because the month's quota is used up. It also runs in an environment left out
   of `MONITOR_ENVIRONMENTS`, to check the connection from a local machine, and
   warns that real exceptions there are not reported.
+- Browser errors. `@quietGuardBrowser` in a layout's `<head>` prints a small
+  dependency-free script, inline, that reports the uncaught JavaScript errors
+  and unhandled promise rejections of your pages to the project's browser
+  endpoint: the page address without its query string or fragment, the user
+  agent, the error and its stack, whether Livewire is on the page, and the
+  Alpine expression that failed when there is one. At most ten reports per
+  page load, the same error once. It needs `MONITOR_BROWSER_KEY`, the project's
+  public browser key from the dashboard (never `MONITOR_KEY`), and follows the
+  same `enabled` and `environments` gates as exceptions. The script carries
+  the nonce Vite gives the page, for a strict Content-Security-Policy; add the
+  server's origin to `connect-src`. No source maps: frames show the built
+  bundle.
 
 ## v0.6.0
 

@@ -28,6 +28,17 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Browser errors
+    |--------------------------------------------------------------------------
+    | The project's PUBLIC browser key, shown in the dashboard once browser
+    | errors are enabled for the project. With it set, @quietGuardBrowser in a
+    | layout's <head> reports the JavaScript errors of your pages. It is not
+    | MONITOR_KEY, which is a secret and must never reach a page.
+    */
+    'browser_key' => env('MONITOR_BROWSER_KEY'),
+
+    /*
+    |--------------------------------------------------------------------------
     | Environments
     |--------------------------------------------------------------------------
     | Only report when the current app environment is in this list. Leave empty

@@ -20,6 +20,7 @@ use QuietGuard\LaravelMonitor\Console\RestoreCommand;
 use QuietGuard\LaravelMonitor\Console\TestCommand;
 use QuietGuard\LaravelMonitor\Http\Transport;
 use QuietGuard\LaravelMonitor\Support\AutomaticHeartbeats;
+use QuietGuard\LaravelMonitor\Support\BrowserScript;
 use QuietGuard\LaravelMonitor\Support\LogCollector;
 use QuietGuard\LaravelMonitor\Support\PayloadBuilder;
 use QuietGuard\LaravelMonitor\Support\ReleaseResolver;
@@ -82,6 +83,14 @@ class LaravelMonitorServiceProvider extends ServiceProvider
             );
         });
 
+        // Not a singleton: a layout reads the configuration as it is when it
+        // renders, like the gates of the exception path.
+        $this->app->bind(BrowserScript::class, function (Application $app) {
+            $config = $app['config']->get('monitor');
+
+            return new BrowserScript($app, $config, $this->release($app, $config));
+        });
+
         $this->app->singleton(LogCollector::class, function (Application $app) {
             $config = $app['config']->get('monitor');
 
@@ -140,6 +149,20 @@ class LaravelMonitorServiceProvider extends ServiceProvider
         $this->registerExceptionHook();
         $this->registerLogHook();
         $this->registerSchedulerMacro();
+        $this->registerBrowserDirective();
+    }
+
+    /**
+     * `@quietGuardBrowser` in a layout's <head> prints the browser error
+     * script inline, or nothing without MONITOR_BROWSER_KEY. Registered once
+     * the Blade compiler exists, so an application without views loads no
+     * view component for it.
+     */
+    private function registerBrowserDirective(): void
+    {
+        $this->callAfterResolving('blade.compiler', function (object $blade): void {
+            $blade->directive('quietGuardBrowser', fn (): string => '<?php echo app(\\'.BrowserScript::class.'::class)->render(); ?>');
+        });
     }
 
     /**

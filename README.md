@@ -180,6 +180,18 @@ Sensitive request/context keys (passwords, tokens, cookies, authorization
 headers...) are masked before leaving your application. Extend the list via the
 `scrub` config key. Stack-trace frame arguments are never sent.
 
+From version 0.6.0, request headers go out on an allow list
+(`request_headers`): every header travels with its name, and with its value
+only when the list names it; the scrub list still applies on top. Values are
+also masked by their shape wherever they sit, message text and code snippet
+lines included: personal data (`email`, `iban`, `nir`, `card`, `phone`) and
+credentials recognised by their prefix (Stripe, AWS, GitHub, GitLab and Slack
+keys, JWTs, private key blocks, a Laravel `APP_KEY`, a Quiet Guard project key,
+the password of a `user:password@host` in an address). A route parameter whose
+name the scrub list matches is masked in the reported URL whatever its length,
+and a field the engine could not read is withheld as `[redacted:unscannable]`
+rather than sent as it came.
+
 ## Documentation
 
 Full documentation is served by your Quiet Guard server under `/docs`

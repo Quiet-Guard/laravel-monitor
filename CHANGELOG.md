@@ -2,6 +2,41 @@
 
 All notable changes to `quiet-guard/laravel-monitor`.
 
+## v0.6.0 (unreleased)
+
+### Security
+
+- Request headers go out on an allow list. `PayloadBuilder` sent
+  `$request->headers->all()` whole and masked it by name, so any header the
+  scrub list had not thought of travelled with its value. Every header now
+  travels with its NAME, and with its value only when `monitor.request_headers`
+  names it (by default `accept`, `accept-encoding`, `accept-language`,
+  `cache-control`, `content-length`, `content-type`, `host`, `origin`,
+  `user-agent`, `x-requested-with`, `x-livewire`, `x-inertia`,
+  `x-inertia-version`); the others carry `[scrubbed]`. The scrub list still
+  applies on top. The six visitor IP headers are absent from the list and a
+  customer with a legal basis adds them, removing them from `scrub`
+  (`forwarded` included, since it masks `x-forwarded-for` by substring).
+- A route parameter whose NAME the scrub list matches is masked in the
+  reported URL whatever its length (`/reset-password/{token}`): the path rule
+  only knew a token by its shape, forty letters or digits, which stays as the
+  safety net. Read from `$request->route()`, failing open on anything
+  unexpected.
+- Credentials are masked by their shape wherever they sit, the queued path
+  included (the report is masked before it is dispatched), through the core's
+  `ValueRedactor`: see the core's changelog for the shapes. The published
+  configuration template now reads `ValueRedactor::PATTERNS` instead of a
+  copied list, so a published copy follows the package; a copy published
+  before this version keeps the five personal shapes it names and masks no
+  credential until it is edited.
+
+### Changed
+
+- The core is required as `^0.6.0`: `PayloadBuilder` calls `Scrubber::masks()`
+  and the report relies on `ValueRedactor::CREDENTIALS`.
+- `PayloadBuilder` takes a sixth constructor argument, the headers sent in
+  clear (null takes `PayloadBuilder::HEADERS`).
+
 ## v0.5.0
 
 ### Added

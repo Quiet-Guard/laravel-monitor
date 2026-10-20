@@ -100,7 +100,8 @@ exception pipeline. Context values are scrubbed with the same rules as exception
 and the `MONITOR_ENVIRONMENTS` allowlist applies to logs exactly like exceptions.
 
 Logs require the **logs** feature on your plan, and forwarded entries count
-toward your team's monthly event quota alongside exceptions.
+toward your team's monthly log line quota, which is separate from the
+exception quota.
 
 ## Dependency vulnerability scanning
 

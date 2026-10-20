@@ -38,6 +38,10 @@ All notable changes to `quiet-guard/laravel-monitor`.
   (removing the package never makes that file fatal); the exact list a copy
   published before this version carries, `['email', 'iban', 'nir', 'card',
   'phone']`, is read as the default it was, so it masks credentials too.
+- The shapes of the query string and of a path segment that `fullUrl()`
+  writes percent-encoded are masked in the reported URL, as they already were
+  in the `query` array beside it, through the core's `ValueRedactor`, which
+  now reads an encoded value decoded.
 
 ### Changed
 

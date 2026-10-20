@@ -51,7 +51,7 @@
             name: text(String((error && error.name) || 'Error'), 255),
             message: message.slice(0, 8192),
             stack: stack.slice(0, 16384),
-            url: location.origin + location.pathname,
+            url: (location.origin + location.pathname).slice(0, 2048),
             ua: text(navigator.userAgent, 255),
             release: config.release || null,
             environment: config.environment || null,

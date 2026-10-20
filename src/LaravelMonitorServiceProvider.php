@@ -45,6 +45,11 @@ class LaravelMonitorServiceProvider extends ServiceProvider
                 (int) ($config['trace_limit'] ?? 0),
                 $this->release($app, $config),
                 (bool) ($config['code_snippets'] ?? true),
+                // Null, not [], when the key is absent: a configuration
+                // published before the key existed carries no opinion, and
+                // the builder's own list applies. An explicit [] sends every
+                // header masked, which is a choice.
+                is_array($config['request_headers'] ?? null) ? $config['request_headers'] : null,
             );
         });
 

@@ -1,5 +1,7 @@
 <?php
 
+use QuietGuard\Monitor\Support\ValueRedactor;
+
 return [
 
     /*
@@ -172,17 +174,70 @@ return [
     | checksum are verified rather than merely matched, so a sixteen digit order
     | reference is not mistaken for a card number.
     |
-    | Available: email, iban, nir (French social security), card, phone (French
-    | numbering plan). Remove the ones that produce false positives on your data,
-    | or set the whole array to [] to send payloads untouched.
+    | Personal data: email, iban, nir (French social security), card, phone
+    | (French numbering plan). Credentials, since 0.6.0: private_key (a
+    | -----BEGIN ... PRIVATE KEY----- block), jwt, stripe (sk_live_, sk_test_,
+    | rk_live_, rk_test_, whsec_), aws (AKIA, ASIA), github (ghp_, gho_, ghu_,
+    | ghs_, ghr_, github_pat_), gitlab (glpat-), slack (xox?-), app_key (a
+    | Laravel APP_KEY, base64:...), project_key (a Quiet Guard lm_ key) and
+    | url_password (the password of a user:password@host in an address of any
+    | scheme, the scheme, the user and the host staying readable).
+    |
+    | The list below is the client's own, so a shape added to a later version
+    | reaches a published copy of this file. To remove one, write the list
+    | out: 'redact' => ['email', 'iban', 'card', ...]. Set it to [] to send
+    | payloads untouched: Quiet Guard still masks the credential shapes on
+    | arrival, never the personal ones, which are yours to decide.
+    |
+    | A value the engine cannot scan (a PCRE limit hit on a built-in shape) is
+    | replaced whole by [redacted:unscannable] rather than sent as it came.
     */
-    'redact' => ['email', 'iban', 'nir', 'card', 'phone'],
+    'redact' => ValueRedactor::PATTERNS,
 
     /*
     | Your own shapes: label => PCRE pattern. The label appears in the payload,
-    | for example 'customer_ref' masks as [redacted:customer_ref].
+    | for example 'customer_ref' masks as [redacted:customer_ref]. A pattern
+    | that does not compile is ignored: that is a configuration error, not an
+    | unreadable value, and it must not stop a report.
     */
     'redact_custom' => [],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Request headers sent in clear
+    |--------------------------------------------------------------------------
+    | Since 0.6.0 an exception report carries every header of the request by
+    | NAME, and only the ones named here by VALUE; the others travel as
+    | [scrubbed]. An allow list rather than a block list: a block list names
+    | the headers somebody thought of, and the next proxy or SDK adds one
+    | nobody did. These say what the request was and how it was asked for,
+    | and none of them has ever carried a credential. The scrub list below
+    | still applies on top: a name it matches is masked whatever this list
+    | says.
+    |
+    | The headers that carry the visitor's IP address (x-forwarded-for,
+    | x-real-ip, cf-connecting-ip, true-client-ip, x-client-ip, forwarded)
+    | are deliberately absent: they are personal data, and keeping them is
+    | your decision as controller, which the processing agreement leaves to
+    | you. Add them here, and remove them from the scrub list below, to keep
+    | them. referer and referrer stay masked: a URL is where applications put
+    | their one-off secrets.
+    */
+    'request_headers' => [
+        'accept',
+        'accept-encoding',
+        'accept-language',
+        'cache-control',
+        'content-length',
+        'content-type',
+        'host',
+        'origin',
+        'user-agent',
+        'x-requested-with',
+        'x-livewire',
+        'x-inertia',
+        'x-inertia-version',
+    ],
 
     /*
     |--------------------------------------------------------------------------
@@ -210,7 +265,10 @@ return [
     // default list is masked there before anything is stored, but not the
     // visitor IP headers below, which are yours to keep or mask. Log
     // contexts and the lines of a code snippet are masked by this list
-    // alone, on your side, and so is any name you add.
+    // alone, on your side, and so is any name you add; what Quiet Guard
+    // masks there on arrival is the credential SHAPES of 'redact' above
+    // (a stamped token, a key block, a URL password), by shape and not by
+    // name.
     'scrub' => [
         'password',
         'password_confirmation',
@@ -246,9 +304,11 @@ return [
 
         // The headers that carry a visitor's IP address.
         //
-        // The payload sends every header it finds, and behind a reverse proxy,
-        // which is the ordinary production topology, one of these holds the IP
-        // of the person who hit the page. That is personal data, and it does
+        // Behind a reverse proxy, which is the ordinary production topology,
+        // one of these holds the IP of the person who hit the page. Since
+        // 0.6.0 'request_headers' above already withholds their value (only
+        // the names it lists travel in clear); they stay here so that a copy
+        // of this file published before that list existed masks them too. That is personal data, and it does
         // not identify OUR customer: it identifies THEIR visitor, who never
         // chose us and whose address an exception report does not need.
         //

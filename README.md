@@ -52,6 +52,13 @@ hosted service, so set it only to reach a self-hosted instance; a value that
 already ends in `/api` or `/api/v1` is accepted and normalised, the SDK
 appending `/api/v1/...` itself.
 
+Check the connection by sending one test exception (since v0.7.0); the command
+says whether the server accepted it, and why not when it did not:
+
+```bash
+php artisan monitor:test
+```
+
 ## How it works
 
 The package registers an additive `reportable()` callback on Laravel's exception

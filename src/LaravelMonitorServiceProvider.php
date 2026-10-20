@@ -17,6 +17,7 @@ use QuietGuard\LaravelMonitor\Console\HeartbeatCommand;
 use QuietGuard\LaravelMonitor\Console\ListBackupsCommand;
 use QuietGuard\LaravelMonitor\Console\ReportDependenciesCommand;
 use QuietGuard\LaravelMonitor\Console\RestoreCommand;
+use QuietGuard\LaravelMonitor\Console\TestCommand;
 use QuietGuard\LaravelMonitor\Http\Transport;
 use QuietGuard\LaravelMonitor\Support\AutomaticHeartbeats;
 use QuietGuard\LaravelMonitor\Support\LogCollector;
@@ -130,6 +131,7 @@ class LaravelMonitorServiceProvider extends ServiceProvider
                 BackupCommand::class,
                 ListBackupsCommand::class,
                 RestoreCommand::class,
+                TestCommand::class,
             ]);
 
             $this->registerAutomaticHeartbeats();

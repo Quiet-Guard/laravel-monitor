@@ -2,6 +2,17 @@
 
 All notable changes to `quiet-guard/laravel-monitor`.
 
+## v0.7.0 (unreleased)
+
+### Added
+
+- `php artisan monitor:test` sends one test exception right away, without
+  the queue even when `MONITOR_QUEUE` is set, and prints whether the server
+  accepted it, with the server's own reason when it did not (an invalid key,
+  a suspended payment, a plan limit). It also runs in an environment left out
+  of `MONITOR_ENVIRONMENTS`, to check the connection from a local machine, and
+  warns that real exceptions there are not reported.
+
 ## v0.6.0
 
 ### Security

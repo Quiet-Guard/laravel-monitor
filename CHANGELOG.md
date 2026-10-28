@@ -12,7 +12,9 @@ All notable changes to `quiet-guard/laravel-monitor`.
   did, never its string (that of a `Response` or a `Request` carries
   `Set-Cookie`, `Cookie` and `Authorization`). An object that throws while
   being unwrapped is replaced by its class name instead of losing the log
-  line. `Log::warning('x', ['input' =>
+  line, a cycle between objects is cut (`[recursion]`), and a `Request`
+  still gives its public properties rather than `all()`, so a field with
+  an innocent name (`otp`, `pin`) does not start leaving with the fix. `Log::warning('x', ['input' =>
   collect($request->all())])` used to send the password in clear, and with
   `MONITOR_QUEUE` set it was also serialized into the application's `jobs`
   and `failed_jobs` tables.

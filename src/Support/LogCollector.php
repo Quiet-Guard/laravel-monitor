@@ -8,6 +8,7 @@ use Illuminate\Contracts\Support\Arrayable;
 use QuietGuard\LaravelMonitor\Http\Transport;
 use QuietGuard\LaravelMonitor\Jobs\SendLogsToMonitor;
 use QuietGuard\Monitor\Support\Cut;
+use Symfony\Component\HttpFoundation\Request;
 use Throwable;
 
 class LogCollector
@@ -143,20 +144,26 @@ class LogCollector
         return $context;
     }
 
-    private function normalizeValue(mixed $value, int $depth = 0): mixed
+    /**
+     * @param  array<int, true>  $path  ids of the objects being unwrapped on
+     *                                  this branch, to stop a cycle
+     */
+    private function normalizeValue(mixed $value, int $depth = 0, array $path = []): mixed
     {
         if (is_scalar($value) || $value === null) {
             return $value;
         }
 
-        // Garde contre un jsonSerialize() qui se renvoie lui-même.
+        // La profondeur seule ne borne pas un cycle : un parent dont douze
+        // enfants renvoient vers lui épuisait 512 Mo en largeur. Le chemin,
+        // comme la détection de récursion de json_encode, s'en charge.
         if ($depth > 32) {
             return '[depth]';
         }
 
         if (is_array($value)) {
             foreach ($value as $key => $item) {
-                $value[$key] = $this->normalizeValue($item, $depth + 1);
+                $value[$key] = $this->normalizeValue($item, $depth + 1, $path);
             }
 
             return $value;
@@ -166,6 +173,12 @@ class LogCollector
             return gettype($value);
         }
 
+        if (isset($path[spl_object_id($value)])) {
+            return '[recursion]';
+        }
+
+        $path[spl_object_id($value)] = true;
+
         // Déplié ICI, avant le scrubber : un objet gardé entier n'était
         // déplié que par le json_encode du transport, après tout masquage,
         // donc une Collection portant 'password' partait en clair (et entrait
@@ -174,9 +187,12 @@ class LogCollector
         // donne ses propriétés publiques, comme json_encode, et JAMAIS sa
         // chaîne : celle d'une Response ou d'une Request porte Set-Cookie,
         // Cookie et Authorization, que ni le scrubber ni le redacteur ne
-        // savent masquer.
+        // savent masquer. Une Request passe par là AVANT Arrayable : son
+        // toArray() est all(), donc un champ au nom anodin (otp, pin, cvc)
+        // partirait en clair là où la 0.7.0 n'envoyait que des sacs vides.
         try {
             $data = match (true) {
+                $value instanceof Request => get_object_vars($value),
                 $value instanceof \JsonSerializable => $value->jsonSerialize(),
                 $value instanceof Arrayable => $value->toArray(),
                 $value instanceof \Stringable => get_object_vars($value),
@@ -187,6 +203,6 @@ class LogCollector
             return $value::class;
         }
 
-        return $this->normalizeValue($data, $depth + 1);
+        return $this->normalizeValue($data, $depth + 1, $path);
     }
 }

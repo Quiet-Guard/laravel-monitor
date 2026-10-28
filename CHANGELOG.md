@@ -2,13 +2,17 @@
 
 All notable changes to `quiet-guard/laravel-monitor`.
 
-## Unreleased
+## v0.7.1 (unreleased)
 
 ### Security
 
 - A log context value that is an object is unwrapped before it is scrubbed:
   `jsonSerialize()` first (what `json_encode` would call), then `toArray()`,
-  a `Stringable` becomes its string. `Log::warning('x', ['input' =>
+  and any other `Stringable` gives its public properties, as `json_encode`
+  did, never its string (that of a `Response` or a `Request` carries
+  `Set-Cookie`, `Cookie` and `Authorization`). An object that throws while
+  being unwrapped is replaced by its class name instead of losing the log
+  line. `Log::warning('x', ['input' =>
   collect($request->all())])` used to send the password in clear, and with
   `MONITOR_QUEUE` set it was also serialized into the application's `jobs`
   and `failed_jobs` tables.

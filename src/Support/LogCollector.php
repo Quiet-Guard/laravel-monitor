@@ -8,6 +8,7 @@ use Illuminate\Contracts\Support\Arrayable;
 use QuietGuard\LaravelMonitor\Http\Transport;
 use QuietGuard\LaravelMonitor\Jobs\SendLogsToMonitor;
 use QuietGuard\Monitor\Support\Cut;
+use Throwable;
 
 class LogCollector
 {
@@ -153,19 +154,6 @@ class LogCollector
             return '[depth]';
         }
 
-        // Déplié ICI, avant le scrubber : un objet gardé entier n'était
-        // déplié que par le json_encode du transport, après tout masquage,
-        // donc une Collection portant 'password' partait en clair (et entrait
-        // en clair dans la table jobs en mode file). jsonSerialize() d'abord,
-        // parce que c'est ce que json_encode aurait appelé.
-        if ($value instanceof \JsonSerializable) {
-            return $this->normalizeValue($value->jsonSerialize(), $depth + 1);
-        }
-
-        if ($value instanceof Arrayable) {
-            return $this->normalizeValue($value->toArray(), $depth + 1);
-        }
-
         if (is_array($value)) {
             foreach ($value as $key => $item) {
                 $value[$key] = $this->normalizeValue($item, $depth + 1);
@@ -174,10 +162,31 @@ class LogCollector
             return $value;
         }
 
-        if ($value instanceof \Stringable) {
-            return (string) $value;
+        if (! is_object($value)) {
+            return gettype($value);
         }
 
-        return is_object($value) ? $value::class : gettype($value);
+        // Déplié ICI, avant le scrubber : un objet gardé entier n'était
+        // déplié que par le json_encode du transport, après tout masquage,
+        // donc une Collection portant 'password' partait en clair (et entrait
+        // en clair dans la table jobs en mode file). jsonSerialize() d'abord,
+        // parce que c'est ce que json_encode aurait appelé. Un Stringable
+        // donne ses propriétés publiques, comme json_encode, et JAMAIS sa
+        // chaîne : celle d'une Response ou d'une Request porte Set-Cookie,
+        // Cookie et Authorization, que ni le scrubber ni le redacteur ne
+        // savent masquer.
+        try {
+            $data = match (true) {
+                $value instanceof \JsonSerializable => $value->jsonSerialize(),
+                $value instanceof Arrayable => $value->toArray(),
+                $value instanceof \Stringable => get_object_vars($value),
+                default => $value::class,
+            };
+        } catch (Throwable) {
+            // Un objet qui lève ne coûte que sa valeur, pas la ligne de log.
+            return $value::class;
+        }
+
+        return $this->normalizeValue($data, $depth + 1);
     }
 }

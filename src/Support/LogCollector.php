@@ -4,8 +4,6 @@ namespace QuietGuard\LaravelMonitor\Support;
 
 use Illuminate\Contracts\Bus\Dispatcher;
 use Illuminate\Contracts\Foundation\Application;
-use Illuminate\Contracts\Support\Arrayable;
-use Illuminate\Contracts\Support\ValidatedData;
 use QuietGuard\LaravelMonitor\Http\Transport;
 use QuietGuard\LaravelMonitor\Jobs\SendLogsToMonitor;
 use QuietGuard\Monitor\Support\Cut;
@@ -79,7 +77,7 @@ class LogCollector
             $this->flush();
         }
 
-        // jsonSerialize() et toArray() tournent ici : un accesseur qui logge
+        // jsonSerialize() tourne ici : un accesseur qui logge
         // réentrerait dans add() jusqu'à la limite de pile (un segfault sur
         // PHP 8.2), d'où le drapeau, comme pendant le flush.
         $this->normalizing = true;
@@ -181,8 +179,8 @@ class LogCollector
         }
 
         if (is_array($value)) {
-            // Neuf, pour la même raison que normalize() : get_object_vars(),
-            // jsonSerialize() et toArray() conservent les références.
+            // Neuf, pour la même raison que normalize() : get_object_vars()
+            // et jsonSerialize() conservent les références.
             $normalized = [];
 
             foreach ($value as $key => $item) {
@@ -205,21 +203,17 @@ class LogCollector
         // Déplié ICI, avant le scrubber : un objet gardé entier n'était
         // déplié que par le json_encode du transport, après tout masquage,
         // donc une Collection portant 'password' partait en clair (et entrait
-        // en clair dans la table jobs en mode file). jsonSerialize() d'abord,
-        // parce que c'est ce que json_encode aurait appelé. Un Stringable
-        // donne ses propriétés publiques, comme json_encode, et JAMAIS sa
-        // chaîne : celle d'une Response ou d'une Request porte Set-Cookie,
-        // Cookie et Authorization, que ni le scrubber ni le redacteur ne
-        // savent masquer. Stringable et ValidatedData AVANT Arrayable : une
-        // Request, une UriQueryString (signature comprise) ou un
-        // ValidatedInput ($request->safe()) rendent par toArray() la saisie
-        // de l'utilisateur, otp, pin ou cvc compris, là où la 0.7.0
-        // n'envoyait que des sacs vides ou un nom de classe.
+        // en clair dans la table jobs en mode file). On déplie exactement ce
+        // que json_encode aurait envoyé, rien de plus : jsonSerialize(), ou
+        // les propriétés publiques d'un Stringable, JAMAIS sa chaîne (celle
+        // d'une Response ou d'une Request porte Set-Cookie, Cookie et
+        // Authorization). Un objet seulement Arrayable garde son nom de
+        // classe comme en 0.7.0 : son toArray() rendrait la saisie d'un
+        // ValidatedInput, d'un formulaire Livewire ou d'un appel MCP.
         try {
             $data = match (true) {
                 $value instanceof \JsonSerializable => $value->jsonSerialize(),
-                $value instanceof \Stringable, $value instanceof ValidatedData => get_object_vars($value),
-                $value instanceof Arrayable => $value->toArray(),
+                $value instanceof \Stringable => get_object_vars($value),
                 default => $value::class,
             };
         } catch (Throwable) {

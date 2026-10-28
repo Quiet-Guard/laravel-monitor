@@ -10,18 +10,18 @@ All notable changes to `quiet-guard/laravel-monitor`.
   scrubbed. `Log::warning('x', ['input' => collect($request->all())])` used
   to send the password in clear, and with `MONITOR_QUEUE` set it was also
   serialized into the application's `jobs` and `failed_jobs` tables.
-  `jsonSerialize()` comes first (what `json_encode` would call). A
-  `Stringable` or a `ValidatedInput` then gives its public properties, as
-  `json_encode` did, and never its string nor its `toArray()`: the string of
-  a `Response` or a `Request` carries `Set-Cookie`, `Cookie` and
-  `Authorization`, and the array of a `Request`, a `ValidatedInput` or a
-  `UriQueryString` is the user's input, where a field with an innocent name
-  (`otp`, `pin`) or a URL signature would start leaving with the fix. Any
-  other `Arrayable` gives `toArray()`. An object that throws while being
-  unwrapped is replaced by its class name instead of losing the log line, a
-  cycle between objects is cut (`[recursion]`), a log written while a
-  context is being unwrapped is ignored, and unwrapping never writes
-  through a reference the application shares.
+  Nothing leaves that 0.7.0 did not send, it is now masked first: what
+  `json_encode` would have produced, `jsonSerialize()` or the public
+  properties of a `Stringable`, never its string (that of a `Response` or a
+  `Request` carries `Set-Cookie`, `Cookie` and `Authorization`). Any other
+  object, an `Arrayable` or a `ValidatedInput` included, still gives its
+  class name. An object that throws while being unwrapped is replaced by
+  its class name instead of losing the log line, a cycle between objects is
+  cut (`[recursion]`), a log written while a context is being unwrapped is
+  ignored, and unwrapping never writes through a reference the application
+  shares.
+- A log context nested deeper than 32 levels is now cut to `[depth]`, an
+  unwrapped object counting as one level.
 
 ## v0.7.0
 

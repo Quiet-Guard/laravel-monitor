@@ -4,6 +4,7 @@ namespace QuietGuard\LaravelMonitor\Support;
 
 use Illuminate\Contracts\Bus\Dispatcher;
 use Illuminate\Contracts\Foundation\Application;
+use Illuminate\Contracts\Support\Arrayable;
 use QuietGuard\LaravelMonitor\Http\Transport;
 use QuietGuard\LaravelMonitor\Jobs\SendLogsToMonitor;
 use QuietGuard\Monitor\Support\Cut;
@@ -141,21 +142,39 @@ class LogCollector
         return $context;
     }
 
-    private function normalizeValue(mixed $value): mixed
+    private function normalizeValue(mixed $value, int $depth = 0): mixed
     {
         if (is_scalar($value) || $value === null) {
             return $value;
         }
 
-        if (is_array($value)) {
-            return $this->normalize($value);
+        // Garde contre un jsonSerialize() qui se renvoie lui-même.
+        if ($depth > 32) {
+            return '[depth]';
         }
 
-        if ($value instanceof \JsonSerializable || $value instanceof \Stringable) {
+        // Déplié ICI, avant le scrubber : un objet gardé entier n'était
+        // déplié que par le json_encode du transport, après tout masquage,
+        // donc une Collection portant 'password' partait en clair (et entrait
+        // en clair dans la table jobs en mode file). jsonSerialize() d'abord,
+        // parce que c'est ce que json_encode aurait appelé.
+        if ($value instanceof \JsonSerializable) {
+            return $this->normalizeValue($value->jsonSerialize(), $depth + 1);
+        }
+
+        if ($value instanceof Arrayable) {
+            return $this->normalizeValue($value->toArray(), $depth + 1);
+        }
+
+        if (is_array($value)) {
+            foreach ($value as $key => $item) {
+                $value[$key] = $this->normalizeValue($item, $depth + 1);
+            }
+
             return $value;
         }
 
-        if (is_object($value) && method_exists($value, '__toString')) {
+        if ($value instanceof \Stringable) {
             return (string) $value;
         }
 

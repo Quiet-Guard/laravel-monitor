@@ -5,10 +5,10 @@ namespace QuietGuard\LaravelMonitor\Support;
 use Illuminate\Contracts\Bus\Dispatcher;
 use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Contracts\Support\Arrayable;
+use Illuminate\Contracts\Support\ValidatedData;
 use QuietGuard\LaravelMonitor\Http\Transport;
 use QuietGuard\LaravelMonitor\Jobs\SendLogsToMonitor;
 use QuietGuard\Monitor\Support\Cut;
-use Symfony\Component\HttpFoundation\Request;
 use Throwable;
 
 class LogCollector
@@ -19,6 +19,8 @@ class LogCollector
     private array $entries = [];
 
     private bool $flushing = false;
+
+    private bool $normalizing = false;
 
     /**
      * @param  array<string, mixed>  $config
@@ -33,13 +35,14 @@ class LogCollector
     /**
      * Record a log message. Entries below the configured threshold, entries
      * carrying an exception (handled by the exception pipeline) and entries
-     * recorded while flushing (to avoid recursion) are ignored.
+     * recorded while flushing or while unwrapping a context (a jsonSerialize()
+     * that logs) are ignored, to avoid recursion.
      *
      * @param  array<string, mixed>  $context
      */
     public function add(string $level, string $message, array $context = []): void
     {
-        if ($this->flushing) {
+        if ($this->flushing || $this->normalizing) {
             return;
         }
 
@@ -76,10 +79,21 @@ class LogCollector
             $this->flush();
         }
 
+        // jsonSerialize() et toArray() tournent ici : un accesseur qui logge
+        // réentrerait dans add() jusqu'à la limite de pile (un segfault sur
+        // PHP 8.2), d'où le drapeau, comme pendant le flush.
+        $this->normalizing = true;
+
+        try {
+            $context = $this->normalize($context);
+        } finally {
+            $this->normalizing = false;
+        }
+
         $this->entries[] = [
             'level' => strtolower($level),
             'message' => $message,
-            'context' => $this->scrubber->scrub($this->normalize($context)),
+            'context' => $this->scrubber->scrub($context),
             'environment' => $this->app->environment(),
             'release' => $this->config['release'] ?? null,
             'logged_at' => now()->toIso8601String(),
@@ -137,11 +151,16 @@ class LogCollector
      */
     private function normalize(array $context): array
     {
+        // Un tableau neuf, jamais une écriture dans celui qu'on parcourt : un
+        // élément qui est une référence PHP aurait transmis l'écriture à la
+        // variable de l'application. Logger ne modifie rien chez l'appelant.
+        $normalized = [];
+
         foreach ($context as $key => $value) {
-            $context[$key] = $this->normalizeValue($value);
+            $normalized[$key] = $this->normalizeValue($value);
         }
 
-        return $context;
+        return $normalized;
     }
 
     /**
@@ -162,11 +181,15 @@ class LogCollector
         }
 
         if (is_array($value)) {
+            // Neuf, pour la même raison que normalize() : get_object_vars(),
+            // jsonSerialize() et toArray() conservent les références.
+            $normalized = [];
+
             foreach ($value as $key => $item) {
-                $value[$key] = $this->normalizeValue($item, $depth + 1, $path);
+                $normalized[$key] = $this->normalizeValue($item, $depth + 1, $path);
             }
 
-            return $value;
+            return $normalized;
         }
 
         if (! is_object($value)) {
@@ -187,15 +210,16 @@ class LogCollector
         // donne ses propriétés publiques, comme json_encode, et JAMAIS sa
         // chaîne : celle d'une Response ou d'une Request porte Set-Cookie,
         // Cookie et Authorization, que ni le scrubber ni le redacteur ne
-        // savent masquer. Une Request passe par là AVANT Arrayable : son
-        // toArray() est all(), donc un champ au nom anodin (otp, pin, cvc)
-        // partirait en clair là où la 0.7.0 n'envoyait que des sacs vides.
+        // savent masquer. Stringable et ValidatedData AVANT Arrayable : une
+        // Request, une UriQueryString (signature comprise) ou un
+        // ValidatedInput ($request->safe()) rendent par toArray() la saisie
+        // de l'utilisateur, otp, pin ou cvc compris, là où la 0.7.0
+        // n'envoyait que des sacs vides ou un nom de classe.
         try {
             $data = match (true) {
-                $value instanceof Request => get_object_vars($value),
                 $value instanceof \JsonSerializable => $value->jsonSerialize(),
+                $value instanceof \Stringable, $value instanceof ValidatedData => get_object_vars($value),
                 $value instanceof Arrayable => $value->toArray(),
-                $value instanceof \Stringable => get_object_vars($value),
                 default => $value::class,
             };
         } catch (Throwable) {

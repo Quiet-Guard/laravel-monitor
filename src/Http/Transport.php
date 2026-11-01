@@ -407,9 +407,14 @@ class Transport
      * Un appel JSON au serveur, sous la clé du projet. Un 409 (équipe occupée,
      * envoi encore en ouverture) est attendu puis rejoué, trois fois au plus.
      *
+     * Avec $retryTransport, une erreur de transport ou un 5xx est aussi
+     * rejoué trois fois, après 1, 2 puis 4 secondes : un incident réseau
+     * après des gigaoctets envoyés ne doit pas perdre l'envoi. lastError ne
+     * nomme alors que l'hôte, jamais une adresse.
+     *
      * @param  array<string, mixed>|null  $json
      */
-    private function call(string $method, string $path, ?array $json = null): ?Response
+    private function call(string $method, string $path, ?array $json = null, bool $retryTransport = false): ?Response
     {
         $this->lastUnsupported = false;
         $this->lastStatus = null;
@@ -422,10 +427,29 @@ class Transport
 
         $url = $this->baseUrl().'/api/v1'.$path;
 
+        $transportTries = 0;
+
         try {
             for ($try = 0; ; $try++) {
                 $request = Http::acceptJson()->timeout(max($this->timeout, 120))->withToken($this->key);
-                $response = $request->send($method, $url, $json === null ? [] : ['json' => $json]);
+
+                try {
+                    $response = $request->send($method, $url, $json === null ? [] : ['json' => $json]);
+                } catch (Throwable $e) {
+                    if (! $retryTransport || $transportTries >= 3) {
+                        throw $e;
+                    }
+
+                    Sleep::for(2 ** $transportTries++)->seconds();
+
+                    continue;
+                }
+
+                if ($retryTransport && $response->serverError() && $transportTries < 3) {
+                    Sleep::for(2 ** $transportTries++)->seconds();
+
+                    continue;
+                }
 
                 if ($response->status() !== 409 || $try >= 3) {
                     break;
@@ -434,7 +458,9 @@ class Transport
                 Sleep::for(min(10, max(1, (int) $response->header('Retry-After'))))->seconds();
             }
         } catch (Throwable $e) {
-            $this->lastError = "Could not reach {$url}: ".$e->getMessage();
+            $this->lastError = $retryTransport
+                ? "Could not reach {$this->baseHost()}."
+                : "Could not reach {$url}: ".$e->getMessage();
 
             return null;
         }
@@ -528,7 +554,7 @@ class Transport
      */
     public function backupPartUrls(string $id, array $parts): ?array
     {
-        $response = $this->call('POST', '/backups/uploads/'.rawurlencode($id).'/parts', ['parts' => array_values($parts)]);
+        $response = $this->call('POST', '/backups/uploads/'.rawurlencode($id).'/parts', ['parts' => array_values($parts)], retryTransport: true);
 
         return $response === null ? null : ($this->jsonArray($response, ['urls' => 'array'])['urls'] ?? null);
     }
@@ -592,7 +618,7 @@ class Transport
      */
     public function completeBackupUpload(string $id, array $parts): ?array
     {
-        $response = $this->call('POST', '/backups/uploads/'.rawurlencode($id).'/complete', ['parts' => $parts]);
+        $response = $this->call('POST', '/backups/uploads/'.rawurlencode($id).'/complete', ['parts' => $parts], retryTransport: true);
 
         return $response === null ? null : $this->jsonArray($response, ['id' => 'string']);
     }

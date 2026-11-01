@@ -446,6 +446,35 @@ class Transport
     }
 
     /**
+     * Le corps JSON d'une réponse réussie, ou null : un 2xx dont le corps est un
+     * scalaire ou n'est pas du JSON ne doit jamais faire lever une TypeError
+     * dans l'application hôte.
+     *
+     * @return array<string, mixed>|null
+     */
+    private function jsonArray(Response $response): ?array
+    {
+        if (! $response->successful()) {
+            return null;
+        }
+
+        $body = $response->json();
+
+        if (! is_array($body)) {
+            $this->lastError = "Unexpected answer from {$this->baseHost()} (HTTP {$response->status()}).";
+
+            return null;
+        }
+
+        return $body;
+    }
+
+    private function baseHost(): string
+    {
+        return (string) parse_url($this->baseUrl(), PHP_URL_HOST);
+    }
+
+    /**
      * Ouvre un envoi par morceaux. Null avec lastUnsupported() quand le
      * serveur ne sait pas le faire (404, 405) ou n'a pas de stockage (503) :
      * l'appelant retombe alors sur uploadBackup().
@@ -470,7 +499,7 @@ class Transport
             $this->lastUnsupported = true;
         }
 
-        return $response->successful() ? $response->json() : null;
+        return $this->jsonArray($response);
     }
 
     /**
@@ -483,7 +512,15 @@ class Transport
     {
         $response = $this->call('POST', '/backups/uploads/'.rawurlencode($id).'/parts', ['parts' => array_values($parts)]);
 
-        return $response?->successful() && is_array($response->json('urls')) ? $response->json('urls') : null;
+        $body = $response === null ? null : $this->jsonArray($response);
+
+        if ($body !== null && ! is_array($body['urls'] ?? null)) {
+            $this->lastError = "Unexpected answer from {$this->baseHost()} (HTTP {$response->status()}).";
+
+            return null;
+        }
+
+        return $body['urls'] ?? null;
     }
 
     /**
@@ -517,7 +554,11 @@ class Transport
 
             return null;
         } finally {
-            @fclose($handle);
+            // Guzzle a pu fermer la ressource avec son flux : fclose() sur une
+            // ressource fermée lève une TypeError que @ ne retient pas.
+            if (is_resource($handle)) {
+                fclose($handle);
+            }
         }
 
         $this->lastStatus = $response->status();
@@ -543,7 +584,7 @@ class Transport
     {
         $response = $this->call('POST', '/backups/uploads/'.rawurlencode($id).'/complete', ['parts' => $parts]);
 
-        return $response?->successful() ? $response->json() : null;
+        return $response === null ? null : $this->jsonArray($response);
     }
 
     public function abortBackupUpload(string $id): bool
@@ -564,7 +605,7 @@ class Transport
 
         $this->lastUnsupported = in_array($response->status(), [404, 405], true);
 
-        return $response->successful() ? $response->json() : null;
+        return $this->jsonArray($response);
     }
 
     /**

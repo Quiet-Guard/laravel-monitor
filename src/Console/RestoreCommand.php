@@ -64,12 +64,25 @@ class RestoreCommand extends Command
 
         // Le fichier de l'appelant n'est jamais le nôtre : on ne le supprime pas.
         $blob = $downloaded;
-        $temporary = null;
+        $temporary = $expected = null;
 
         if ($blob === null) {
             $blob = $temporary = rtrim(sys_get_temp_dir(), '/').'/monitor-restore-'.bin2hex(random_bytes(8)).'.enc';
 
-            if (! $transport->downloadBackup($id, $blob)) {
+            // Droit depuis le stockage quand le serveur donne une adresse
+            // signée ; l'ancienne route en flux face à un serveur plus ancien.
+            $info = $transport->backupDownloadUrl($id);
+            $expected = is_string($info['checksum'] ?? null) ? $info['checksum'] : null;
+
+            if ($info !== null && is_string($info['url'] ?? null)) {
+                $fetched = $transport->downloadBackupFrom($info['url'], $blob);
+            } elseif ($transport->lastUnsupported()) {
+                $fetched = $transport->downloadBackup($id, $blob);
+            } else {
+                $fetched = false;
+            }
+
+            if (! $fetched) {
                 @unlink($blob);
                 $this->error($transport->lastError() !== null
                     ? 'Failed to download the backup: '.$transport->lastError()
@@ -88,7 +101,7 @@ class RestoreCommand extends Command
         // Sans identifiant il n'y a rien à qui demander la somme attendue :
         // la vérification est alors absente, et la commande le dit plutôt que
         // de laisser croire qu'elle a eu lieu.
-        if ($id !== null && ! $this->checksumMatches($transport, $id, $blob)) {
+        if ($id !== null && ! $this->checksumMatches($transport, $id, $blob, $expected)) {
             if ($temporary !== null) {
                 @unlink($temporary);
             }
@@ -128,15 +141,15 @@ class RestoreCommand extends Command
      * vérification, elle, ne l'est pas. Ce contrôle protège d'un transfert
      * abîmé, il n'est pas une autorisation.
      */
-    private function checksumMatches(Transport $transport, string $id, string $blob): bool
+    private function checksumMatches(Transport $transport, string $id, string $blob, ?string $expected = null): bool
     {
-        $backups = $transport->listBackups();
+        // La somme donnée avec l'adresse de téléchargement fait foi ; sans
+        // elle (fichier déjà téléchargé, ancien serveur), on la cherche dans la liste.
+        $backups = $expected === null ? $transport->listBackups() : [];
 
         if ($backups === null) {
             return true;
         }
-
-        $expected = null;
 
         foreach ($backups as $backup) {
             if (($backup['id'] ?? null) === $id) {

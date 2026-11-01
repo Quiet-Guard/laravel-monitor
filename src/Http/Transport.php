@@ -2,8 +2,11 @@
 
 namespace QuietGuard\LaravelMonitor\Http;
 
+use GuzzleHttp\Psr7\LimitStream;
+use GuzzleHttp\Psr7\Utils;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Sleep;
 use Psr\Log\LoggerInterface;
 use QuietGuard\Monitor\Config;
 use QuietGuard\Monitor\Support\Cut;
@@ -17,6 +20,9 @@ class Transport
      * the log collector (which would cause a feedback loop).
      */
     public const INTERNAL = '__monitor';
+
+    /** Taille de morceau demandée au serveur, qui peut la relever (1 000 morceaux au plus). */
+    public const BACKUP_PART_SIZE = 67_108_864;
 
     public function __construct(
         private readonly ?string $url,
@@ -379,6 +385,214 @@ class Transport
 
             return false;
         }
+    }
+
+    /** True quand le serveur ne connaît pas la route demandée (un serveur plus ancien) : on se replie. */
+    private bool $lastUnsupported = false;
+
+    private ?int $lastStatus = null;
+
+    public function lastUnsupported(): bool
+    {
+        return $this->lastUnsupported;
+    }
+
+    /** Le statut HTTP du dernier appel, null quand rien n'a répondu. */
+    public function lastStatus(): ?int
+    {
+        return $this->lastStatus;
+    }
+
+    /**
+     * Un appel JSON au serveur, sous la clé du projet. Un 409 (équipe occupée,
+     * envoi encore en ouverture) est attendu puis rejoué, trois fois au plus.
+     *
+     * @param  array<string, mixed>|null  $json
+     */
+    private function call(string $method, string $path, ?array $json = null): ?Response
+    {
+        $this->lastUnsupported = false;
+        $this->lastStatus = null;
+
+        if (! $this->isConfigured()) {
+            $this->lastError = 'MONITOR_KEY is empty.';
+
+            return null;
+        }
+
+        $url = $this->baseUrl().'/api/v1'.$path;
+
+        try {
+            for ($try = 0; ; $try++) {
+                $request = Http::acceptJson()->timeout(max($this->timeout, 120))->withToken($this->key);
+                $response = $request->send($method, $url, $json === null ? [] : ['json' => $json]);
+
+                if ($response->status() !== 409 || $try >= 3) {
+                    break;
+                }
+
+                Sleep::for(min(10, max(1, (int) $response->header('Retry-After'))))->seconds();
+            }
+        } catch (Throwable $e) {
+            $this->lastError = "Could not reach {$url}: ".$e->getMessage();
+
+            return null;
+        }
+
+        $this->lastStatus = $response->status();
+        $this->lastError = $response->successful() ? null : $this->explain($response, $url);
+
+        return $response;
+    }
+
+    /**
+     * Ouvre un envoi par morceaux. Null avec lastUnsupported() quand le
+     * serveur ne sait pas le faire (404, 405) ou n'a pas de stockage (503) :
+     * l'appelant retombe alors sur uploadBackup().
+     *
+     * @return array<string, mixed>|null id, part_size, parts, urls, expires_at
+     */
+    public function startBackupUpload(string $type, ?string $name, int $sizeBytes, string $checksum, int $partSize): ?array
+    {
+        $response = $this->call('POST', '/backups/uploads', array_filter([
+            'type' => $type,
+            'name' => $name,
+            'size_bytes' => $sizeBytes,
+            'checksum' => $checksum,
+            'part_size' => $partSize,
+        ], static fn (mixed $v): bool => $v !== null));
+
+        if ($response === null) {
+            return null;
+        }
+
+        if (in_array($response->status(), [404, 405, 503], true)) {
+            $this->lastUnsupported = true;
+        }
+
+        return $response->successful() ? $response->json() : null;
+    }
+
+    /**
+     * De nouvelles adresses signées pour ces morceaux.
+     *
+     * @param  list<int>  $parts
+     * @return array<int|string, string>|null
+     */
+    public function backupPartUrls(string $id, array $parts): ?array
+    {
+        $response = $this->call('POST', '/backups/uploads/'.rawurlencode($id).'/parts', ['parts' => array_values($parts)]);
+
+        return $response?->successful() && is_array($response->json('urls')) ? $response->json('urls') : null;
+    }
+
+    /**
+     * Envoie UN morceau du fichier chiffré, tel quel, à son adresse signée.
+     *
+     * Rend l'ETag comme le stockage l'a écrit, guillemets compris. L'adresse
+     * porte la signature : elle n'entre jamais dans lastError() ni dans un
+     * journal, seulement l'hôte et le statut. Le message d'une exception de
+     * transport la contient, donc il n'est jamais repris non plus.
+     */
+    public function putBackupPart(string $url, string $filePath, int $offset, int $length): ?string
+    {
+        $this->lastStatus = null;
+        $host = (string) parse_url($url, PHP_URL_HOST);
+        $handle = @fopen($filePath, 'rb');
+
+        if ($handle === false) {
+            $this->lastError = 'Could not read the encrypted backup file.';
+
+            return null;
+        }
+
+        try {
+            // Un flux borné : le morceau n'est jamais chargé en mémoire.
+            $body = new LimitStream(Utils::streamFor($handle), $length, $offset);
+            $response = Http::timeout(max($this->timeout, 600))
+                ->withBody($body, 'application/octet-stream')
+                ->put($url);
+        } catch (Throwable) {
+            $this->lastError = "Could not reach {$host}.";
+
+            return null;
+        } finally {
+            @fclose($handle);
+        }
+
+        $this->lastStatus = $response->status();
+
+        if (! $response->successful() || ! filled($etag = $response->header('ETag'))) {
+            $this->lastError = $response->successful()
+                ? "No ETag from {$host}."
+                : "HTTP {$response->status()} from {$host} while sending a part.";
+
+            return null;
+        }
+
+        $this->lastError = null;
+
+        return $etag;
+    }
+
+    /**
+     * @param  list<array{part: int, etag: string}>  $parts
+     * @return array<string, mixed>|null the created backup metadata
+     */
+    public function completeBackupUpload(string $id, array $parts): ?array
+    {
+        $response = $this->call('POST', '/backups/uploads/'.rawurlencode($id).'/complete', ['parts' => $parts]);
+
+        return $response?->successful() ? $response->json() : null;
+    }
+
+    public function abortBackupUpload(string $id): bool
+    {
+        return $this->call('DELETE', '/backups/uploads/'.rawurlencode($id))?->successful() === true;
+    }
+
+    /**
+     * @return array<string, mixed>|null url, checksum, size_bytes, expires_at
+     */
+    public function backupDownloadUrl(string $id): ?array
+    {
+        $response = $this->call('GET', '/backups/'.rawurlencode($id).'/download-url');
+
+        if ($response === null) {
+            return null;
+        }
+
+        $this->lastUnsupported = in_array($response->status(), [404, 405], true);
+
+        return $response->successful() ? $response->json() : null;
+    }
+
+    /**
+     * Télécharge depuis l'adresse que le serveur a donnée. La clé du projet
+     * ne part que vers l'hôte de MONITOR_URL, jamais vers le stockage.
+     */
+    public function downloadBackupFrom(string $url, string $destPath): bool
+    {
+        $host = strtolower((string) parse_url($url, PHP_URL_HOST));
+        $ours = strtolower((string) parse_url($this->baseUrl(), PHP_URL_HOST));
+
+        try {
+            $request = Http::timeout(max($this->timeout, 600))->withOptions(['sink' => $destPath]);
+
+            if ($host !== '' && $host === $ours && $this->isConfigured()) {
+                $request = $request->withToken($this->key);
+            }
+
+            $response = $request->get($url);
+        } catch (Throwable) {
+            $this->lastError = "Could not reach {$host}.";
+
+            return false;
+        }
+
+        $this->lastError = $response->successful() ? null : "HTTP {$response->status()} from {$host}.";
+
+        return $response->successful();
     }
 
     /**

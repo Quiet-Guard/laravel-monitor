@@ -3,6 +3,7 @@
 namespace QuietGuard\LaravelMonitor\Console;
 
 use Illuminate\Console\Command;
+use Illuminate\Support\Sleep;
 use PharData;
 use QuietGuard\LaravelMonitor\Http\Transport;
 use QuietGuard\LaravelMonitor\Support\BackupCipher;
@@ -81,7 +82,7 @@ class BackupCommand extends Command
 
         try {
             $cipher->encryptFile($source, $encrypted, $key['public_key']);
-            $result = $transport->uploadBackup($type, $this->option('name'), $encrypted);
+            $result = $this->upload($transport, $type, $encrypted);
         } finally {
             @unlink($source);
             @unlink($encrypted);
@@ -98,11 +99,107 @@ class BackupCommand extends Command
         // The server's own words when it gave any: it names the field it
         // refused or the quota that is full, which the generic line below
         // guesses at and gets wrong for every rejection it can explain.
-        $this->error($transport->lastError() !== null
-            ? 'Upload refused: '.$transport->lastError()
+        $reason = $this->uploadError ?? $transport->lastError();
+        $this->error($reason !== null
+            ? 'Upload refused: '.$reason
             : 'Upload failed (check MONITOR_URL / MONITOR_KEY and your storage quota).');
 
         return self::FAILURE;
+    }
+
+    /** Pourquoi l'envoi par morceaux a renoncé, gardé avant que l'abandon n'écrase lastError(). */
+    private ?string $uploadError = null;
+
+    /**
+     * Envoie le fichier chiffré : par morceaux droit vers le stockage quand le
+     * serveur le sait, sinon par l'ancienne requête unique.
+     *
+     * @return array<string, mixed>|null
+     */
+    private function upload(Transport $transport, string $type, string $encrypted): ?array
+    {
+        $size = (int) filesize($encrypted);
+        $start = $transport->startBackupUpload(
+            $type, $this->option('name'), $size, (string) hash_file('sha256', $encrypted), Transport::BACKUP_PART_SIZE,
+        );
+
+        if ($start === null) {
+            return $transport->lastUnsupported()
+                ? $transport->uploadBackup($type, $this->option('name'), $encrypted)
+                : null;
+        }
+
+        $id = (string) ($start['id'] ?? '');
+        $result = $this->sendParts($transport, $id, $start, $encrypted, $size);
+
+        if ($result === null) {
+            $this->uploadError = $transport->lastError();
+            $transport->abortBackupUpload($id);
+        }
+
+        return $result;
+    }
+
+    /**
+     * Les morceaux dans l'ordre, chacun rejoué trois fois (1 s, 2 s, 4 s). Un
+     * 403 veut dire que l'adresse signée a expiré : on en demande une neuve.
+     * Les adresses viennent par lots de 20, comme le serveur les signe.
+     *
+     * @param  array<string, mixed>  $start
+     * @return array<string, mixed>|null
+     */
+    private function sendParts(Transport $transport, string $id, array $start, string $encrypted, int $size): ?array
+    {
+        $partSize = (int) ($start['part_size'] ?? 0);
+        $count = (int) ($start['parts'] ?? 0);
+        $urls = (array) ($start['urls'] ?? []);
+        $etags = [];
+
+        if ($partSize < 1 || $count < 1) {
+            return null;
+        }
+
+        $fetch = function (int $from) use ($transport, $id, $count, &$urls): bool {
+            $fresh = $transport->backupPartUrls($id, range($from, min($from + 19, $count)));
+            $urls = $fresh === null ? $urls : array_replace($urls, $fresh);
+
+            return $fresh !== null;
+        };
+
+        for ($n = 1; $n <= $count; $n++) {
+            $offset = ($n - 1) * $partSize;
+            $length = min($partSize, $size - $offset);
+
+            if ($length < 1 || (! isset($urls[$n]) && ! $fetch($n))) {
+                return null;
+            }
+
+            for ($attempt = 0; ; $attempt++) {
+                $etag = isset($urls[$n]) ? $transport->putBackupPart((string) $urls[$n], $encrypted, $offset, $length) : null;
+
+                if ($etag !== null) {
+                    $etags[] = ['part' => $n, 'etag' => $etag];
+
+                    break;
+                }
+
+                if ($attempt >= 3) {
+                    return null;
+                }
+
+                Sleep::for(2 ** $attempt)->seconds();
+
+                if ($transport->lastStatus() === 403) {
+                    unset($urls[$n]);
+
+                    if (! $fetch($n)) {
+                        return null;
+                    }
+                }
+            }
+        }
+
+        return $transport->completeBackupUpload($id, $etags);
     }
 
     /**

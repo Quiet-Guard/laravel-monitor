@@ -2,6 +2,15 @@
 
 All notable changes to `quiet-guard/laravel-monitor`.
 
+## v0.8.0 (unreleased)
+
+### Added
+
+- `monitor:backup` sends the encrypted archive to the storage in parts, straight from the application, through addresses the server signs: the archive no longer passes through the server's web stack, so the size of a single request is no longer a limit. Each part is retried three times (after 1, 2 and 4 seconds), a new address is asked for when one has expired, and an upload that gives up is aborted so it holds no space. The `--keep` rotation still runs only after a successful upload.
+- `monitor:restore` downloads straight from the storage through a signed address and checks the archive against the checksum the server published. The project key is sent only to the server's own host, never to the storage.
+- Against a server that does not know these routes (or has no storage configured), both commands fall back to the single-request upload and download of v0.7.x. Nothing to configure.
+- A signed address never appears in a command's output, in `lastError()` or in a log line: only the host and the status.
+
 ## v0.7.1
 
 ### Security

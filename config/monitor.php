@@ -192,9 +192,10 @@ return [
     | ghs_, ghr_, github_pat_), gitlab (glpat-, glrt-, gldt-, gloas-, glptt-,
     | glffct-, glimt-, glagent-, glcbt-, glsoat-), slack (xox?-, xapp-, and
     | the path of a hooks.slack.com webhook), app_key (a Laravel APP_KEY,
-    | base64:...), project_key (a Quiet Guard lm_ key) and url_password (the
-    | password of a user:password@host in an address of any scheme, the
-    | scheme, the user and the host staying readable).
+    | base64:...), project_key (a Quiet Guard lm_ key), aws_presigned (the
+    | signature of a presigned storage address, X-Amz-Signature=, since 0.8.0)
+    | and url_password (the password of a user:password@host in an address of
+    | any scheme, the scheme, the user and the host staying readable).
     |
     | null means the client's own list, every shape above and whatever a
     | later version adds, so a published copy of this file follows the

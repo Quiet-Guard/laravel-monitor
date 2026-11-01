@@ -447,18 +447,36 @@ class Transport
 
     /**
      * Le corps JSON d'une réponse réussie, ou null : un 2xx dont le corps est un
-     * scalaire ou n'est pas du JSON ne doit jamais faire lever une TypeError
-     * dans l'application hôte.
+     * scalaire, n'est pas du JSON, ou manque une clé que l'appelant lit, ne doit
+     * jamais faire lever une TypeError ou un « undefined index » dans
+     * l'application hôte. Chaque clé exigée porte son type (string, int, array).
      *
+     * @param  array<string, 'string'|'int'|'array'>  $required
      * @return array<string, mixed>|null
      */
-    private function jsonArray(Response $response): ?array
+    private function jsonArray(Response $response, array $required = []): ?array
     {
         if (! $response->successful()) {
             return null;
         }
 
         $body = $response->json();
+
+        if (is_array($body)) {
+            foreach ($required as $key => $type) {
+                $value = $body[$key] ?? null;
+
+                if (! match ($type) {
+                    'string' => is_string($value) && $value !== '',
+                    'int' => is_int($value) && $value > 0,
+                    default => is_array($value),
+                }) {
+                    $body = null;
+
+                    break;
+                }
+            }
+        }
 
         if (! is_array($body)) {
             $this->lastError = "Unexpected answer from {$this->baseHost()} (HTTP {$response->status()}).";
@@ -499,7 +517,7 @@ class Transport
             $this->lastUnsupported = true;
         }
 
-        return $this->jsonArray($response);
+        return $this->jsonArray($response, ['id' => 'string', 'part_size' => 'int', 'parts' => 'int', 'urls' => 'array']);
     }
 
     /**
@@ -512,15 +530,7 @@ class Transport
     {
         $response = $this->call('POST', '/backups/uploads/'.rawurlencode($id).'/parts', ['parts' => array_values($parts)]);
 
-        $body = $response === null ? null : $this->jsonArray($response);
-
-        if ($body !== null && ! is_array($body['urls'] ?? null)) {
-            $this->lastError = "Unexpected answer from {$this->baseHost()} (HTTP {$response->status()}).";
-
-            return null;
-        }
-
-        return $body['urls'] ?? null;
+        return $response === null ? null : ($this->jsonArray($response, ['urls' => 'array'])['urls'] ?? null);
     }
 
     /**
@@ -584,7 +594,7 @@ class Transport
     {
         $response = $this->call('POST', '/backups/uploads/'.rawurlencode($id).'/complete', ['parts' => $parts]);
 
-        return $response === null ? null : $this->jsonArray($response);
+        return $response === null ? null : $this->jsonArray($response, ['id' => 'string']);
     }
 
     public function abortBackupUpload(string $id): bool
@@ -605,7 +615,7 @@ class Transport
 
         $this->lastUnsupported = in_array($response->status(), [404, 405], true);
 
-        return $this->jsonArray($response);
+        return $this->jsonArray($response, ['url' => 'string', 'checksum' => 'string']);
     }
 
     /**

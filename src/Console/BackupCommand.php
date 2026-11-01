@@ -152,7 +152,8 @@ class BackupCommand extends Command
     {
         $partSize = (int) ($start['part_size'] ?? 0);
         $count = (int) ($start['parts'] ?? 0);
-        $urls = (array) ($start['urls'] ?? []);
+        // Seules les adresses (chaînes) comptent : une valeur d'un autre type serait une erreur de conversion.
+        $urls = array_filter((array) ($start['urls'] ?? []), 'is_string');
         $etags = [];
 
         if ($partSize < 1 || $count < 1) {
@@ -161,7 +162,7 @@ class BackupCommand extends Command
 
         $fetch = function (int $from) use ($transport, $id, $count, &$urls): bool {
             $fresh = $transport->backupPartUrls($id, range($from, min($from + 19, $count)));
-            $urls = $fresh === null ? $urls : array_replace($urls, $fresh);
+            $urls = $fresh === null ? $urls : array_replace($urls, array_filter($fresh, 'is_string'));
 
             return $fresh !== null;
         };

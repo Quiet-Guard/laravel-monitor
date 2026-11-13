@@ -443,13 +443,14 @@ final class PerformanceFlusher
                 continue;
             }
 
-            $key = $query['sql']."\0".$origin;
+            $doubleQuoted = ($query['qi'] ?? false) === true;
+            $key = $query['sql']."\0".$origin."\0".($doubleQuoted ? '1' : '0');
 
             if (! isset($queries[$key]) && count($queries) >= self::MAX_KEYS_WHILE_READING) {
                 continue;
             }
 
-            $row = $queries[$key] ?? ['sql' => $query['sql'], 'origin' => $origin, 'count' => 0, 'duration_sum_ms' => 0.0, 'duration_max_ms' => 0.0, 'slow_count' => 0, 'n_plus_one_requests' => 0];
+            $row = $queries[$key] ?? ['sql' => $query['sql'], 'double_quoted_identifiers' => $doubleQuoted, 'origin' => $origin, 'count' => 0, 'duration_sum_ms' => 0.0, 'duration_max_ms' => 0.0, 'slow_count' => 0, 'n_plus_one_requests' => 0];
             $row['count'] += (int) ($query['count'] ?? 0);
             $row['duration_sum_ms'] += (float) ($query['ms'] ?? 0);
             $row['duration_max_ms'] = max($row['duration_max_ms'], (float) ($query['max'] ?? 0));

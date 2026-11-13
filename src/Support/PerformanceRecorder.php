@@ -219,7 +219,7 @@ final class PerformanceRecorder
 
                 // The bindings are kept as a reference until a second run
                 // asks for them, and only for a SELECT, the only N+1.
-                $this->queries[$sql] = [1, $ms, $ms, $ms >= self::SLOW_QUERY_MS ? 1 : 0, [], self::isSelect($sql) ? $event->bindings : null];
+                $this->queries[$sql] = [1, $ms, $ms, $ms >= self::SLOW_QUERY_MS ? 1 : 0, [], self::isSelect($sql) ? $event->bindings : null, self::quotesIdentifiersDoubly($event)];
 
                 return;
             }
@@ -447,13 +447,15 @@ final class PerformanceRecorder
 
         foreach ($chosen as $sql) {
             $entry = $this->queries[$sql];
-            $shape = $this->redactor()->redact(SqlNormalizer::normalize((string) $sql));
-            $existing = $queries[$shape] ?? ['sql' => $shape, 'count' => 0, 'ms' => 0.0, 'max' => 0.0, 'slow' => 0, 'n1' => false];
+            $doubleQuoted = (bool) ($entry[6] ?? false);
+            $shape = $this->redactor()->redact(SqlNormalizer::normalize((string) $sql, $doubleQuoted));
+            $existing = $queries[$shape] ?? ['sql' => $shape, 'qi' => $doubleQuoted, 'count' => 0, 'ms' => 0.0, 'max' => 0.0, 'slow' => 0, 'n1' => false];
 
             // Two raw statements of one shape (integers written in line) are
             // one statement to the reader.
             $queries[$shape] = [
                 'sql' => $shape,
+                'qi' => $doubleQuoted,
                 'count' => $existing['count'] + $entry[0],
                 'ms' => round($existing['ms'] + $entry[1], 2),
                 'max' => round(max($existing['max'], $entry[2]), 2),
@@ -632,6 +634,22 @@ final class PerformanceRecorder
         }
 
         return substr($queue, 0, 100);
+    }
+
+    /** @var array<string, bool> per connection name */
+    private static array $doubleQuotedConnections = [];
+
+    /**
+     * Whether this connection's grammar writes identifiers in double quotes
+     * (Postgres, SQLite, SQL Server), read once per connection name.
+     */
+    private static function quotesIdentifiersDoubly(QueryExecuted $event): bool
+    {
+        return self::$doubleQuotedConnections[$event->connectionName] ??= in_array(
+            $event->connection->getDriverName(),
+            SqlNormalizer::DOUBLE_QUOTED_IDENTIFIER_DRIVERS,
+            true,
+        );
     }
 
     private static function isSelect(string $sql): bool

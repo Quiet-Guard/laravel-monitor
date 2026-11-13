@@ -114,6 +114,42 @@ class Transport
     }
 
     /**
+     * Send one performance summary, already aggregated, normalised and masked.
+     * Short delays on purpose: this runs once a minute, sometimes at the end
+     * of a web request, and our slowness must not become the customer's.
+     *
+     * @param  array<string, mixed>  $payload
+     * @return int|null the HTTP status, null when nothing answered
+     */
+    public function sendPerformance(array $payload): ?int
+    {
+        $url = $this->baseUrl().'/api/v1/performance';
+
+        if (! $this->isConfigured()) {
+            $this->lastError = 'MONITOR_KEY is empty.';
+
+            return null;
+        }
+
+        try {
+            $response = Http::asJson()
+                ->acceptJson()
+                ->connectTimeout(0.5)
+                ->timeout(2)
+                ->withToken($this->key)
+                ->post($url, $payload);
+
+            $this->lastError = $response->successful() ? null : $this->explain($response, $url);
+
+            return $response->status();
+        } catch (Throwable $e) {
+            $this->lastError = "Could not reach {$url}: ".$e->getMessage();
+
+            return null;
+        }
+    }
+
+    /**
      * Ping a scheduled-task heartbeat (auto-registers on first ping).
      */
     public function ping(string $slug): bool

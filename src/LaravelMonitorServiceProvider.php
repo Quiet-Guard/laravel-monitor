@@ -4,9 +4,16 @@ namespace QuietGuard\LaravelMonitor;
 
 use Illuminate\Console\Events\CommandStarting;
 use Illuminate\Console\Scheduling\Event;
+use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Contracts\Debug\ExceptionHandler;
 use Illuminate\Contracts\Foundation\Application;
+use Illuminate\Database\Events\QueryExecuted;
+use Illuminate\Foundation\Http\Events\RequestHandled;
+use Illuminate\Http\Client\Events\ConnectionFailed;
+use Illuminate\Http\Client\Events\RequestSending;
+use Illuminate\Http\Client\Events\ResponseReceived;
 use Illuminate\Log\Events\MessageLogged;
+use Illuminate\Queue\Events\JobExceptionOccurred;
 use Illuminate\Queue\Events\JobFailed;
 use Illuminate\Queue\Events\JobProcessed;
 use Illuminate\Queue\Events\JobProcessing;
@@ -15,6 +22,7 @@ use Illuminate\Support\ServiceProvider;
 use QuietGuard\LaravelMonitor\Console\BackupCommand;
 use QuietGuard\LaravelMonitor\Console\HeartbeatCommand;
 use QuietGuard\LaravelMonitor\Console\ListBackupsCommand;
+use QuietGuard\LaravelMonitor\Console\PerformanceFlushCommand;
 use QuietGuard\LaravelMonitor\Console\ReportDependenciesCommand;
 use QuietGuard\LaravelMonitor\Console\RestoreCommand;
 use QuietGuard\LaravelMonitor\Console\TestCommand;
@@ -23,8 +31,11 @@ use QuietGuard\LaravelMonitor\Support\AutomaticHeartbeats;
 use QuietGuard\LaravelMonitor\Support\BrowserScript;
 use QuietGuard\LaravelMonitor\Support\LogCollector;
 use QuietGuard\LaravelMonitor\Support\PayloadBuilder;
+use QuietGuard\LaravelMonitor\Support\PerformanceFlusher;
+use QuietGuard\LaravelMonitor\Support\PerformanceRecorder;
 use QuietGuard\LaravelMonitor\Support\ReleaseResolver;
 use QuietGuard\LaravelMonitor\Support\Scrubber;
+use QuietGuard\Monitor\Config;
 use QuietGuard\Monitor\Support\ValueRedactor;
 use Throwable;
 
@@ -104,6 +115,55 @@ class LaravelMonitorServiceProvider extends ServiceProvider
                 ]),
             );
         });
+
+        // Lazy: nothing is built, and no listener is attached (registerPerformance),
+        // unless MONITOR_PERFORMANCE is on.
+        $this->app->singleton(PerformanceFlusher::class, function (Application $app) {
+            $config = $app['config']->get('monitor');
+            $instance = PerformanceFlusher::instanceId();
+
+            return new PerformanceFlusher(
+                $app,
+                $app->make(Transport::class),
+                $this->performancePath($app),
+                $instance,
+                PerformanceFlusher::offsetFor($instance),
+                (string) $app->environment(),
+                $this->release($app, $config),
+            );
+        });
+
+        $this->app->singleton(PerformanceRecorder::class, function (Application $app) {
+            $config = $app['config']->get('monitor');
+            $host = parse_url(Config::normaliseUrl($config['url'] ?? null), PHP_URL_HOST);
+
+            return new PerformanceRecorder(
+                $app,
+                $this->performancePath($app),
+                PerformanceFlusher::offsetFor(PerformanceFlusher::instanceId()),
+                is_string($host) ? strtolower($host) : null,
+                is_array($config['ignore_paths'] ?? null) ? $config['ignore_paths'] : [],
+                fn () => $app->make(PerformanceFlusher::class)->flushDue(),
+            );
+        });
+    }
+
+    /**
+     * MONITOR_PERFORMANCE_PATH, otherwise storage/framework/quiet-guard/performance.
+     * Never the system temporary directory: systemd's PrivateTmp gives FPM
+     * and cron two different ones.
+     */
+    private function performancePath(Application $app): string
+    {
+        $path = $app['config']->get('monitor.performance.path');
+
+        if (! is_string($path) || trim($path) === '') {
+            return $app->storagePath('framework/quiet-guard/performance');
+        }
+
+        $path = rtrim(trim($path), '/');
+
+        return str_starts_with($path, '/') ? $path : $app->basePath($path);
     }
 
     /**
@@ -141,6 +201,7 @@ class LaravelMonitorServiceProvider extends ServiceProvider
                 ListBackupsCommand::class,
                 RestoreCommand::class,
                 TestCommand::class,
+                PerformanceFlushCommand::class,
             ]);
 
             $this->registerAutomaticHeartbeats();
@@ -150,6 +211,58 @@ class LaravelMonitorServiceProvider extends ServiceProvider
         $this->registerLogHook();
         $this->registerSchedulerMacro();
         $this->registerBrowserDirective();
+        $this->registerPerformance();
+    }
+
+    /**
+     * Aggregated performance measurement. Off by default, and off means no
+     * listener at all: the gate is read once, at boot.
+     *
+     * Per query and per outgoing call, a few array operations in memory; at
+     * the end of a request or a job, one line appended to a local file. Once
+     * a minute, one summary leaves: from the scheduled task the SDK adds, from
+     * a worker's loop, or from the first request of a new window.
+     */
+    private function registerPerformance(): void
+    {
+        if (! PerformanceRecorder::active($this->app)) {
+            return;
+        }
+
+        $recorder = $this->app->make(PerformanceRecorder::class);
+        $events = $this->app['events'];
+
+        $events->listen(QueryExecuted::class, fn (QueryExecuted $event) => $recorder->onQuery($event));
+        $events->listen(RequestSending::class, fn (RequestSending $event) => $recorder->onRequestSending($event));
+        $events->listen(ResponseReceived::class, fn (ResponseReceived $event) => $recorder->onResponse($event));
+        $events->listen(ConnectionFailed::class, fn (ConnectionFailed $event) => $recorder->onConnectionFailed($event));
+        $events->listen(RequestHandled::class, fn (RequestHandled $event) => $recorder->onRequestHandled($event->request, $event->response));
+        $events->listen('Laravel\Octane\Events\RequestReceived', fn () => $recorder->onOctaneRequest());
+        $events->listen(JobProcessing::class, fn (JobProcessing $event) => $recorder->onJobProcessing($event));
+        $events->listen(JobProcessed::class, fn () => $recorder->onJobEnded(false));
+        $events->listen(JobExceptionOccurred::class, fn () => $recorder->onJobEnded(true));
+        $events->listen(JobFailed::class, fn () => $recorder->onJobEnded(true));
+        $this->app->terminating(fn () => $recorder->onTerminating());
+
+        // Once a window per worker. The Worker stops the daemon on a false
+        // answer from a Looping listener: this one answers nothing.
+        $lastWindow = null;
+        $events->listen(Looping::class, function () use (&$lastWindow): void {
+            try {
+                $flusher = $this->app->make(PerformanceFlusher::class);
+                $window = PerformanceFlusher::windowAt(now()->getTimestamp(), $flusher->offset());
+
+                if ($window !== $lastWindow) {
+                    $lastWindow = $window;
+                    $flusher->flushDue();
+                }
+            } catch (Throwable) {
+            }
+        });
+
+        $this->callAfterResolving(Schedule::class, function (Schedule $schedule): void {
+            $schedule->command('monitor:performance:flush')->everyMinute()->runInBackground();
+        });
     }
 
     /**

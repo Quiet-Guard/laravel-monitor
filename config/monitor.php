@@ -184,6 +184,36 @@ return [
     ],
 
     /*
+    |--------------------------------------------------------------------------
+    | Performance (since 0.10.0)
+    |--------------------------------------------------------------------------
+    |
+    | Off by default. When on, every request and every queued job adds one
+    | line to a local file (its route name, duration, SQL count and time, the
+    | few remarkable SQL statements normalised and masked, the hosts it
+    | called), and once a minute one summary of those lines is sent. No SQL
+    | query and no cache call per request, nothing sent per request. Never
+    | sent: SQL values, URLs, query strings, user ids, IP addresses, headers
+    | or bodies.
+    |
+    | The summary leaves from a task the SDK schedules by itself, from a
+    | worker's loop, or from the first request of a new minute. Outgoing calls
+    | are seen through Laravel's Http client only.
+    |
+    | `environments`: on top of MONITOR_ENVIRONMENTS, production by default.
+    | `path`: a local, writable directory; the default is
+    | storage/framework/quiet-guard/performance. Not a network disk (NFS), and
+    | never the system temporary directory. A read-only filesystem turns the
+    | measurement off.
+    |
+    */
+    'performance' => [
+        'enabled' => env('MONITOR_PERFORMANCE', false),
+        'environments' => array_values(array_filter(array_map('trim', explode(',', (string) env('MONITOR_PERFORMANCE_ENVIRONMENTS', 'production'))))),
+        'path' => env('MONITOR_PERFORMANCE_PATH'),
+    ],
+
+    /*
     | Value masking, by shape rather than by field name.
     |
     | 'scrub' below hides a value because of what its field is CALLED. It never

@@ -2,7 +2,9 @@
 
 All notable changes to `quiet-guard/laravel-monitor`.
 
-## v0.9.0 (unreleased)
+## v0.9.0
+
+Requires the core as `^0.9.0`.
 
 ### Added
 

@@ -93,6 +93,19 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Repeats
+    |--------------------------------------------------------------------------
+    | The same exception, from the same place (class, file and line), is sent
+    | once every this many seconds. The occurrences held back are counted in
+    | the application's cache and sent with the next report of that exception,
+    | so the dashboard still counts every one, while the quota counts reports.
+    | Occurrences held back and never followed by another within a day are
+    | not counted. 0 sends every occurrence.
+    */
+    'dedupe_seconds' => (int) env('MONITOR_DEDUPE_SECONDS', 60),
+
+    /*
+    |--------------------------------------------------------------------------
     | Stack trace depth
     |--------------------------------------------------------------------------
     */

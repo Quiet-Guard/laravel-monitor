@@ -2,6 +2,12 @@
 
 All notable changes to `quiet-guard/laravel-monitor`.
 
+## v0.9.0 (unreleased)
+
+### Added
+
+- The same exception, thrown from the same place (class, file and line), is sent once per window, 60 seconds by default (`MONITOR_DEDUPE_SECONDS`, `0` sends every occurrence). The occurrences held back are counted in the application's cache and sent with the next report of that exception as `skipped`, which a server from this release adds to the issue's count: the dashboard still counts every occurrence, the monthly quota counts what was sent. An exception thrown in a loop of ten thousand used to be ten thousand reports. A count not followed by another report within a day is dropped, and a cache that fails sends every occurrence, as before.
+
 ## v0.8.1
 
 No change of its own: released with the family. Requires the core as `^0.8.1`.

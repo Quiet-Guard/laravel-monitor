@@ -2,7 +2,7 @@
 
 All notable changes to `quiet-guard/laravel-monitor`.
 
-## v0.10.0 (unreleased)
+## v0.10.0
 
 Requires the core as `^0.10.0` (its `SqlNormalizer`), and a server that knows `POST /api/v1/performance`.
 
@@ -11,7 +11,7 @@ Requires the core as `^0.10.0` (its `SqlNormalizer`), and a server that knows `P
 - Aggregated performance measurement, off by default (`MONITOR_PERFORMANCE=true` turns it on, `MONITOR_PERFORMANCE_ENVIRONMENTS` limits it, `production` by default). Each request and each queued job adds one line to a local file: its route name (or URI pattern, never the path), status, duration, number and time of SQL queries, its few remarkable SQL statements (the three costliest, any N+1, any run of one second or more) normalised and masked, and the hosts it called through Laravel's Http client. No SQL query and no cache call per request, nothing sent per request. Once a minute the lines are merged into one summary and sent: from a task the SDK schedules by itself, from a worker's loop, or from the first request of a new minute. SQL values, URLs, query strings, user ids, IP addresses, headers and bodies are never written nor sent.
 - An N+1 is a `SELECT` run ten times or more in one request with five distinct sets of values at least, outside the framework's own tables (cache, locks, sessions, jobs, batches, failed jobs, read from the configuration with the table prefix).
 - `MONITOR_PERFORMANCE_PATH` sets the local directory, `storage/framework/quiet-guard/performance` by default. A directory that cannot be written turns the measurement off. A file is capped at 8 MB and the directory at 64 MB; anything fifteen minutes old is deleted unsent.
-- A summary refused with a 402 or a 403 pauses the measurement for an hour, with one warning in the application's log. After a timeout, a 429 or a 5xx the same summary is sent again, with the same batch id, so the server never counts it twice.
+- A summary refused with a 402 or a 403 pauses the measurement for an hour, with one warning in the application's log. After a timeout, a 429 or a 5xx the same summary is sent again, with the same batch id, so the server never counts it twice. A backlog left by an outage is sent two summaries at a time, oldest first, so a recovering server is not flooded.
 
 ## v0.9.0
 

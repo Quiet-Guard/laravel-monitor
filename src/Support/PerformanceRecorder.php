@@ -68,6 +68,9 @@ final class PerformanceRecorder
 
     public const LIVEWIRE_ROUTE = 'livewire.update';
 
+    /** What an IP address is called in a line: the same token the server uses. */
+    public const IP_HOST = 'adresse-ip';
+
     public const LIVEWIRE_NAME = '/^[a-z0-9._:-]{1,100}\z/';
 
     public const SECRET_SEGMENT = '/^[A-Za-z0-9_-]{20,}$/';
@@ -554,6 +557,13 @@ final class PerformanceRecorder
 
         if ($host === $this->monitorHost) {
             return;
+        }
+
+        // An address can be a person's (a webhook to a customer's own box):
+        // it never leaves the application, whatever its form (127.1, 0x7f000001).
+        if (filter_var($host, FILTER_VALIDATE_IP) !== false
+            || preg_match('/^(?:0x[0-9a-f]+|[0-9]+)(?:\.(?:0x[0-9a-f]+|[0-9]+)){0,3}\z/', $host) === 1) {
+            $host = self::IP_HOST;
         }
 
         if (! isset($this->hosts[$host]) && count($this->hosts) >= self::MAX_HOSTS) {

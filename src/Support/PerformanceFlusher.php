@@ -27,6 +27,9 @@ use Throwable;
  */
 final class PerformanceFlusher
 {
+    /** Every name the SDK writes in its directory: window files, batches, their claims. */
+    private const OWN_FILE = '/^(?:\d{12}\.ndjson|batch-\d+-[0-9a-f]{40}\.json)(?:\.\d+\.(?:sending|tmp))?$/';
+
     public const VERSION = 1;
 
     /** A window is sent from two windows after it on: nobody can still write it. */
@@ -158,6 +161,11 @@ final class PerformanceFlusher
         $total = 0;
 
         foreach ($this->entries() as $name) {
+            // Only the SDK's own names: a path shared by mistake keeps its other files.
+            if (preg_match(self::OWN_FILE, $name) !== 1) {
+                continue;
+            }
+
             $path = $this->dir.'/'.$name;
             $created = $this->createdAt($name);
 

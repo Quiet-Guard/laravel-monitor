@@ -41,6 +41,9 @@ final class PerformanceFlusher
     /** Anything older is deleted unsent. */
     public const MAX_AGE_SECONDS = 900;
 
+    /** Pending batches retried per pass, oldest first. */
+    public const PENDING_PER_PASS = 2;
+
     /** Past this, writers stop until the next pass. */
     public const DIRECTORY_CAP_BYTES = 67_108_864;
 
@@ -134,7 +137,10 @@ final class PerformanceFlusher
 
             $this->janitor($now);
 
-            foreach ($this->pendingBatches() as $batch) {
+            // A backlog left by an outage drains a few batches a minute rather
+            // than all at once: every customer recovering in the same minute
+            // would otherwise send the server what it just failed to answer.
+            foreach (array_slice($this->pendingBatches(), 0, self::PENDING_PER_PASS) as $batch) {
                 if (microtime(true) >= $deadline) {
                     return;
                 }

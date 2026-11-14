@@ -68,7 +68,7 @@ final class PerformanceRecorder
 
     public const LIVEWIRE_ROUTE = 'livewire.update';
 
-    public const LIVEWIRE_NAME = '/^[a-z0-9._:-]{1,100}$/';
+    public const LIVEWIRE_NAME = '/^[a-z0-9._:-]{1,100}\z/';
 
     public const SECRET_SEGMENT = '/^[A-Za-z0-9_-]{20,}$/';
 

@@ -28,7 +28,7 @@ use Throwable;
 final class PerformanceFlusher
 {
     /** Every name the SDK writes in its directory: window files, batches, their claims. */
-    private const OWN_FILE = '/^(?:\d{12}\.ndjson|batch-\d+-[0-9a-f]{40}\.json)(?:\.\d+\.(?:sending|tmp))?$/';
+    private const OWN_FILE = '/^(?:\d{12}\.ndjson|batch-\d+-[0-9a-f]{40}\.json)(?:\.\d+\.(?:sending|tmp))?\z/';
 
     public const VERSION = 1;
 
@@ -209,7 +209,7 @@ final class PerformanceFlusher
     /** @return list<string> batch files waiting for a retry, oldest first */
     private function pendingBatches(): array
     {
-        $batches = array_values(array_filter($this->entries(), fn (string $name): bool => preg_match('/^batch-\d+-[0-9a-f]{40}\.json$/', $name) === 1));
+        $batches = array_values(array_filter($this->entries(), fn (string $name): bool => preg_match('/^batch-\d+-[0-9a-f]{40}\.json\z/', $name) === 1));
         sort($batches);
 
         return array_map(fn (string $name): string => $this->dir.'/'.$name, $batches);
@@ -226,7 +226,7 @@ final class PerformanceFlusher
         $pid = getmypid();
 
         foreach ($this->entries() as $name) {
-            if (preg_match('/^(\d{12})\.ndjson$/', $name, $match) !== 1) {
+            if (preg_match('/^(\d{12})\.ndjson\z/', $name, $match) !== 1) {
                 continue;
             }
 
